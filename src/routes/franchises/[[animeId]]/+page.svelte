@@ -305,7 +305,9 @@
 	}
 
 	function shouldEstimateWatchPlacement(anime: AnimeDetails) {
-		return ['movie', 'special', 'tv_special', 'ova', 'ona', 'cm'].includes(anime.media_type ?? '');
+		return ['movie', 'special', 'tv_special', 'ova', 'ona', 'cm', 'music'].includes(
+			anime.media_type ?? ''
+		);
 	}
 
 	function findWatchPlacement(target: AnimeDetails, entries: AnimeDetails[]) {
