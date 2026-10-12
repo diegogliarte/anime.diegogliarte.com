@@ -1,0 +1,11 @@
+[build]
+command = "pnpm --filter @youranimelist/web build"
+publish = "apps/web/build"
+
+[build.environment]
+PUBLIC_API_URL = "https://api-anime.diegogliarte.com"
+
+[[redirects]]
+from = "/*"
+to = "/200.html"
+status = 200

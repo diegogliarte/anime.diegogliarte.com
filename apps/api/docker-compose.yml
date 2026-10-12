@@ -1,0 +1,18 @@
+services:
+  youranimelist-api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      SQLITE_PATH: /data/mal_anime.sqlite
+      MAL_CLIENT_ID: ${MAL_CLIENT_ID}
+      CORS_ORIGINS: https://anime.diegogliarte.com
+    volumes:
+      - ${SQLITE_HOST_PATH:-./mal_anime.sqlite}:/data/mal_anime.sqlite:ro
+    networks:
+      - caddy-youranimelist-api
+
+networks:
+  caddy-youranimelist-api:
+    external: true

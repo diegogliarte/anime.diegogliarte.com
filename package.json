@@ -1,0 +1,9 @@
+{
+  "name": "your-anime-list",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter @youranimelist/api --filter @youranimelist/web dev",
+    "build": "pnpm -r build",
+    "check": "pnpm -r check"
+  }
+}
