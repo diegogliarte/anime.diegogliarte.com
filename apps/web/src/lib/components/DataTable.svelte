@@ -151,7 +151,7 @@
                       {#if meta.imageUrl}<img class={meta.imageTone ? `status-image status-${meta.imageTone}` : ''} src={meta.imageUrl} alt="" loading="lazy" />{/if}
                       <div class="anime-copy">
                         <a href={meta.href ?? '#'} target={meta.href?.startsWith('http') ? '_blank' : undefined}>{meta.title}</a>
-                        <div class="anime-meta">{#if meta.subtitle}<small>{meta.subtitle}</small>{/if}<a href={`/franchises?id=${encodeURIComponent(String(itemKey))}`}>Franchise</a><a href={`/recommendations?id=${encodeURIComponent(String(itemKey))}`}>Recommendations</a></div>
+                        <div class="anime-meta">{#if meta.subtitle}<small>{meta.subtitle}</small>{/if}<a href={`/franchises?id=${encodeURIComponent(String(itemKey))}`} target="_blank" rel="noopener">Franchise</a><a href={`/recommendations?id=${encodeURIComponent(String(itemKey))}`} target="_blank" rel="noopener">Recommendations</a></div>
                       </div>
                       {#each (meta.tags ?? []).filter((tag) => !['plus', 'minus'].includes(tag.toLowerCase())) as tag}<Badge>{tag}</Badge>{/each}
                     </div>
