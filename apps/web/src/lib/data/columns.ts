@@ -12,6 +12,7 @@ export function animeColumns(): TableColumn<AnimeSummary>[] {
     { key: 'endDate', label: 'End', value: (row) => row.endDate, format: (value) => date(value as string | null), width: '92px' },
     { key: 'type', label: 'Type', value: (row) => label(row.mediaType), width: '80px' },
     { key: 'related', label: 'Related', value: (row) => row.relatedCount, format: (value) => number(value as number), width: '72px', align: 'right' },
+    { key: 'episodeDuration', label: 'Avg ep', value: (row) => row.episodeDuration, format: (value) => duration(value as number | null), width: '80px', align: 'right' },
     { key: 'runtime', label: 'Runtime', value: (row) => row.totalDuration, format: (value) => duration(value as number | null), width: '92px', align: 'right' },
     { key: 'popularity', label: 'Popularity', value: (row) => row.popularity, format: (value) => value ? `#${number(value as number)}` : '—', width: '90px', align: 'right' }
   ];

@@ -13,6 +13,10 @@ const SORTS: Record<string, string> = {
   oldest: 'a.start_date IS NULL, a.start_date, a.id',
   popularity: 'NULLIF(a.popularity, 0) IS NULL, a.popularity, a.id',
   episodes_desc: 'NULLIF(a.num_episodes, 0) IS NULL, a.num_episodes DESC, a.id',
+  episode_duration_desc: 'NULLIF(a.average_episode_duration, 0) IS NULL, NULLIF(a.average_episode_duration, 0) DESC, a.id',
+  episode_duration_asc: 'NULLIF(a.average_episode_duration, 0) IS NULL, NULLIF(a.average_episode_duration, 0), a.id',
+  runtime_desc: '(NULLIF(a.num_episodes, 0) * NULLIF(a.average_episode_duration, 0)) IS NULL, (NULLIF(a.num_episodes, 0) * NULLIF(a.average_episode_duration, 0)) DESC, a.id',
+  runtime_asc: '(NULLIF(a.num_episodes, 0) * NULLIF(a.average_episode_duration, 0)) IS NULL, (NULLIF(a.num_episodes, 0) * NULLIF(a.average_episode_duration, 0)), a.id',
   related_desc: `${RELATED_COUNT_SQL} DESC, a.id`,
   related_asc: `${RELATED_COUNT_SQL}, a.id`
 };
