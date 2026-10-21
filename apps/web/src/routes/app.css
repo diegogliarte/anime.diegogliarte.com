@@ -44,6 +44,8 @@ button { height: 37px; border: 1px solid var(--line); border-radius: 3px; backgr
 button:hover:not(:disabled) { border-color: #48515c; color: var(--text); }
 button.primary { border-color: #7759c9; background: var(--accent); color: #100b1d; font-weight: 700; }
 button:disabled { opacity: .45; cursor: default; }
+.icon-button { display: grid; width: 37px; padding: 0; place-items: center; }
+.icon-button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .global-error { padding: 7px 20px; border-bottom: 1px solid #4f3030; background: #241718; color: #df9a9a; font-size: 12px; }
 main { min-height: 0; overflow: auto; padding: 24px 26px 36px; }
 .page { width: min(1540px, 100%); margin: 0 auto; display: grid; gap: 16px; }

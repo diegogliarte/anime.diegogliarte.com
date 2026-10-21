@@ -11,11 +11,14 @@ export function label(value: string | null | undefined) {
 }
 export function duration(seconds: number | null | undefined) {
   if (!seconds) return '—';
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.round((seconds % 3600) / 60);
-  if (days) return `${number(days)}d ${hours % 24}h`;
-  return hours ? `${number(hours)}h ${minutes}m` : `${minutes}m`;
+  const [value, unit] = seconds >= 86400
+    ? [seconds / 86400, 'd']
+    : seconds >= 3600
+      ? [seconds / 3600, 'h']
+      : seconds >= 60
+        ? [seconds / 60, 'm']
+        : [seconds, 's'];
+  return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value)}${unit}`;
 }
 export function season(seasonName: string | null, year: number | null) {
   return year ? `${seasonName ? label(seasonName) + ' ' : ''}${year}` : '—';

@@ -8,7 +8,7 @@
   import { api } from '$lib/data/api';
   import { readCache, writeCache } from '$lib/data/cache';
   import { animeColumns } from '$lib/data/columns';
-  import { label, listStatusTone, number, season } from '$lib/data/format';
+  import { duration, label, listStatusTone, number, season } from '$lib/data/format';
   import { appState } from '$lib/state/app.svelte';
 
   let franchise = $state<Franchise | null>(null); let loading = $state(false); let error = $state<string | null>(null); let scope = $state<FranchiseScope>('expanded'); let selectedId = $state<number | null>(null);
@@ -38,8 +38,6 @@
     return { completed, entries: nodes.length, watchedEpisodes, episodes, episodeEntries: withEpisodes.length, watchedSeconds, totalSeconds, durationEntries: withDuration.length, averageEpisodeMinutes: durationEpisodes ? totalSeconds / durationEpisodes / 60 : 0, averageEpisodes: withEpisodes.length ? episodes / withEpisodes.length : 0 };
   });
 
-  function days(seconds: number) { return `${(seconds / 86400).toFixed(1)}d`; }
-
   onMount(() => {
     const id = Number(new URLSearchParams(location.search).get('id')) || appState.lastFranchiseId;
     if (id) { selectedId = id; void load(id); }
@@ -68,7 +66,7 @@
   {#if franchise}<div class="franchise-stats">
     <div><span>Completed</span><strong>{number(franchiseStats.completed)}/{number(franchiseStats.entries)}</strong><small>accepted franchise entries</small></div>
     <div><span>Episodes</span><strong>{number(franchiseStats.watchedEpisodes)}/{number(franchiseStats.episodes)}</strong><small>{number(franchiseStats.episodeEntries)} entries with episode count</small></div>
-    <div><span>Time</span><strong>{days(franchiseStats.watchedSeconds)}/{days(franchiseStats.totalSeconds)}</strong><small>{number(franchiseStats.durationEntries)} entries with duration</small></div>
+    <div><span>Time</span><strong>{duration(franchiseStats.watchedSeconds)}/{duration(franchiseStats.totalSeconds)}</strong><small>{number(franchiseStats.durationEntries)} entries with duration</small></div>
     <div><span>Avg ep duration</span><strong>{franchiseStats.averageEpisodeMinutes.toFixed(1)}m</strong><small>weighted by episode count</small></div>
     <div><span>Avg eps/anime</span><strong>{franchiseStats.averageEpisodes.toFixed(1)}</strong><small>known episode counts</small></div>
   </div>{/if}
