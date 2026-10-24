@@ -60,9 +60,6 @@ main { min-height: 0; overflow: auto; padding: 24px 26px 36px; }
 .filters { display: grid; grid-template-columns: repeat(6, minmax(110px, 1fr)); gap: 7px; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
 .filter { display: grid; gap: 4px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
 .filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-.advanced { padding: 9px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
-.advanced summary { cursor: pointer; color: var(--soft); font-size: 12px; }
-.advanced[open] summary { margin-bottom: 9px; }
 .facet-picker { position: relative; align-content: start; }
 .facet-picker summary { display: grid; gap: 4px; cursor: pointer; list-style: none; }
 .facet-picker summary::-webkit-details-marker { display: none; }
@@ -79,6 +76,7 @@ main { min-height: 0; overflow: auto; padding: 24px 26px 36px; }
 .chip { height: 26px; padding: 0 7px; color: var(--accent); border-color: #59458e; background: var(--accent-soft); }
 .data-table { min-width: 0; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
 .table-count { min-height: 35px; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 3px 10px; border-bottom: 1px solid var(--line); color: var(--muted); font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.table-leading { display: flex; min-width: 0; align-items: center; gap: 10px; }
 .table-tools { display: flex; align-items: center; gap: 10px; }
 .table-search { width: 150px; height: 27px; padding: 0 8px; font: 11px Inter, ui-sans-serif, system-ui, sans-serif; }
 .column-picker { position: relative; }

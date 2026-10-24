@@ -12,9 +12,7 @@
   import { appState } from '$lib/state/app.svelte';
   let result = $state<RecommendationResponse | null>(null); let loading = $state(false); let error = $state<string | null>(null);
   const userById = $derived(new Map(appState.userList.map((anime) => [anime.id, anime])));
-  const listedIds = $derived(new Set(userById.keys()));
-  let hideListed = $state(true);
-  const rows = $derived((result?.items ?? []).filter((anime) => !hideListed || !listedIds.has(anime.id)));
+  const rows = $derived(result?.items ?? []);
   const columns: TableColumn<Recommendation>[] = [
     animeColumns()[0] as TableColumn<Recommendation>,
     { key: 'recommendationScore', label: 'Signal', value: (row) => row.recommendationScore, format: (value) => decimal(value as number), width: '75px', align: 'right', tone: () => 'strong' },
@@ -26,7 +24,7 @@
   onMount(() => { const id = Number(new URLSearchParams(location.search).get('id')); if (id) void load(id); });
   async function choose(anime: AnimeSummary) { history.replaceState(null, '', `/recommendations?id=${anime.id}`); await load(anime.id); }
   async function load(id: number) {
-    loading = true; error = null; const key = `recommendations:${id}`;
+    loading = true; error = null; const key = `recommendations:v2:${id}`;
     const cached = await readCache<RecommendationResponse>(key); if (cached) result = cached.value;
     try { const response = await api<RecommendationResponse>(`/v1/recommendations/${id}`); result = response; await writeCache(key, response, 24 * 60 * 60_000, response.revision); }
     catch (cause) { error = cause instanceof Error ? cause.message : 'Unable to load recommendations.'; }
@@ -36,7 +34,6 @@
 <svelte:head><title>Recommendations · YourAnimeList</title></svelte:head>
 <div class="page">
   <PageHeader title="Recommendations" description={result ? `Signals extending outward from ${result.seed.title}.` : 'Recommendations ranked by strength and independent sources.'}><AnimePicker onselect={choose} placeholder="Choose a starting anime…" /></PageHeader>
-  {#if result}<div class="toolbar"><div class="toolbar-group"><button class:primary={hideListed} onclick={() => hideListed = !hideListed}>{hideListed ? 'Hiding listed' : 'Showing listed'}</button></div><span class="muted">{rows.length.toLocaleString()} recommendations</span></div>{/if}
   {#if error}<div class="error">{error}</div>{/if}
   {#if result}<DataTable {rows} {columns} rowKey={(row) => row.id} rowMeta={(row) => ({ title: row.title, subtitle: `${label(row.mediaType)} · ${season(row.season, row.year)}`, imageUrl: row.imageUrl, href: row.malUrl, imageTone: listStatusTone(userById.get(row.id)?.user.status) })} total={rows.length} {loading} />
   {:else if loading}<div class="empty">Calculating recommendations…</div>

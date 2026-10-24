@@ -171,21 +171,27 @@ export function getRecommendations(seedId: number): RecommendationResponse | nul
   const branchRows = rootIds.length ? db.prepare(`
     WITH ranked AS (
       SELECT ar.anime_id AS source_id, ar.recommended_anime_id AS id, ar.num_recommendations AS count,
+             MAX(ar.num_recommendations) OVER (PARTITION BY ar.anime_id) AS max_count,
              ROW_NUMBER() OVER (PARTITION BY ar.anime_id ORDER BY ar.num_recommendations DESC) AS position
       FROM anime_recommendation ar
       WHERE ar.anime_id IN (SELECT CAST(value AS INTEGER) FROM json_each(?))
-    ) SELECT source_id, id, count FROM ranked WHERE position <= 25
-  `).all(JSON.stringify(rootIds)) as { source_id: number; id: number; count: number }[] : [];
+    ) SELECT source_id, id, count, max_count FROM ranked WHERE position <= 25
+  `).all(JSON.stringify(rootIds)) as { source_id: number; id: number; count: number; max_count: number }[] : [];
   const allIds = [...new Set([...rootIds, ...branchRows.map((row) => row.id)])].filter((id) => id !== seedId);
   const animeRows = allIds.length ? db.prepare(`SELECT ${ANIME_SELECT} FROM anime a WHERE a.id IN (SELECT CAST(value AS INTEGER) FROM json_each(?))`).all(JSON.stringify(allIds)) as Raw[] : [];
   const animeById = new Map(animeRows.map((row) => { const anime = mapAnime(row); return [anime.id, anime]; }));
   const titleById = new Map([[seedId, mapAnime(seedRow).title], ...[...animeById].map(([id, anime]) => [id, anime.title] as const)]);
-  const aggregate = new Map<number, { direct: boolean; count: number; sources: Map<number, number> }>();
-  for (const root of rootRows) aggregate.set(root.id, { direct: true, count: root.count, sources: new Map([[seedId, root.count]]) });
+  const rootStrength = new Map(rootRows.map((root) => [root.id, root.count]));
+  const aggregate = new Map<number, { directCount: number; indirectScore: number; count: number; sources: Map<number, number> }>();
+  for (const root of rootRows) aggregate.set(root.id, { directCount: root.count, indirectScore: 0, count: root.count, sources: new Map([[seedId, root.count]]) });
   for (const branch of branchRows) {
     if (branch.id === seedId) continue;
-    const current = aggregate.get(branch.id) ?? { direct: false, count: 0, sources: new Map() };
+    const current = aggregate.get(branch.id) ?? { directCount: 0, indirectScore: 0, count: 0, sources: new Map() };
     current.count += branch.count;
+    const strength = rootStrength.get(branch.source_id) ?? 0;
+    // Normalize within each source before weighting by the seed's affinity to it.
+    // Raw second-hop votes otherwise make globally popular titles dominate every seed.
+    if (branch.max_count > 0) current.indirectScore += strength * (branch.count / branch.max_count) * 0.35;
     current.sources.set(branch.source_id, branch.count);
     aggregate.set(branch.id, current);
   }
@@ -195,7 +201,7 @@ export function getRecommendations(seedId: number): RecommendationResponse | nul
     const sourceCount = value.sources.size;
     return [{
       ...anime,
-      recommendationScore: Math.round((value.direct ? value.count : value.count * (1 + Math.log2(Math.max(sourceCount, 1))) * 0.4) * 100) / 100,
+      recommendationScore: Math.round((value.directCount + value.indirectScore) * 100) / 100,
       recommendationCount: value.count,
       sourceCount,
       sources: [...value.sources].map(([animeId, count]) => ({ animeId, title: titleById.get(animeId) ?? `Anime ${animeId}`, count }))

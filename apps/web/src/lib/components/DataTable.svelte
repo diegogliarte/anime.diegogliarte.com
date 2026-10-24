@@ -129,10 +129,12 @@
 
 <div class="data-table">
   <div class="table-count">
-    <span>{#if tableQuery.trim()}{filtered.length.toLocaleString()} / {rows.length.toLocaleString()} loaded{:else}{rows.length.toLocaleString()} / {total.toLocaleString()}{/if}</span>
+    <div class="table-leading">
+      {#if searchable}<input class="table-search" bind:value={tableQuery} placeholder={searchPlaceholder} aria-label="Search table rows" />{/if}
+      <span>{#if tableQuery.trim()}{filtered.length.toLocaleString()} / {rows.length.toLocaleString()} loaded{:else}{rows.length.toLocaleString()} / {total.toLocaleString()}{/if}</span>
+    </div>
     <div class="table-tools">
       {#if loading}<span>Loading…</span>{/if}
-      {#if searchable}<input class="table-search" bind:value={tableQuery} placeholder={searchPlaceholder} aria-label="Search table rows" />{/if}
       <details class="column-picker">
         <summary>Columns</summary>
         <div class="column-picker-menu">

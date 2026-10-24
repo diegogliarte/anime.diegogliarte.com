@@ -6,19 +6,15 @@
   import { userColumns } from '$lib/data/columns';
   import { label, listStatusTone, season } from '$lib/data/format';
   import { appState } from '$lib/state/app.svelte';
-  let query = $state(''); let status = $state<ListStatus | 'all'>('all');
+  let status = $state<ListStatus | 'all'>('all');
   const statuses: (ListStatus | 'all')[] = ['all', 'watching', 'completed', 'on_hold', 'dropped', 'plan_to_watch'];
-  const statusRows = $derived(appState.userList.filter((anime) => status === 'all' || anime.user.status === status));
-  const rows = $derived.by(() => {
-    const search = query.trim().toLowerCase();
-    return statusRows.filter((anime) => !search || `${anime.title} ${anime.englishTitle ?? ''} ${anime.user.tags.join(' ')}`.toLowerCase().includes(search));
-  });
+  const rows = $derived(appState.userList.filter((anime) => status === 'all' || anime.user.status === status));
   const counts = $derived(new Map(statuses.map((item) => [item, item === 'all' ? appState.userList.length : appState.userList.filter((anime) => anime.user.status === item).length])));
   const meta = (anime: UserAnime) => ({ title: anime.title, subtitle: `${label(anime.mediaType)} · ${season(anime.season, anime.year)}`, imageUrl: anime.imageUrl, href: anime.malUrl, tags: anime.user.tags, imageTone: listStatusTone(anime.user.status) });
 
   function downloadJson() {
     const exportedAt = new Date().toISOString();
-    const items = statusRows.map((anime) => ({
+    const items = rows.map((anime) => ({
       id: anime.id,
       title: anime.title,
       episodes: anime.episodes,
@@ -51,7 +47,7 @@
     {/if}
   </PageHeader>
   {#if appState.userList.length}
-    <div class="toolbar"><div class="toolbar-group"><input class="search" bind:value={query} placeholder="Filter title or tag…" />{#each statuses as item}<button class:primary={status === item} onclick={() => status = item}>{label(item)} <small>{counts.get(item)}</small></button>{/each}</div></div>
+    <div class="toolbar"><div class="toolbar-group">{#each statuses as item}<button class:primary={status === item} onclick={() => status = item}>{label(item)} <small>{counts.get(item)}</small></button>{/each}</div></div>
     <DataTable rows={rows} columns={userColumns()} rowKey={(row) => row.id} rowMeta={meta} total={rows.length} />
   {:else if appState.loadingUser}<div class="empty">Loading your list…</div>
   {:else}<EmptyState title="Load a MyAnimeList username" detail="Your list is cached on this device after the first sync." />{/if}

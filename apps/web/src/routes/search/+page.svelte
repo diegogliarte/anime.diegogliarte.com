@@ -73,13 +73,11 @@
     <label class="filter"><span>Episodes</span><div class="filter-row"><input bind:value={episodesFrom} type="number" placeholder="Min" /><input bind:value={episodesTo} type="number" placeholder="Max" /></div></label>
     <label class="filter"><span>Related entries</span><div class="filter-row"><input bind:value={relatedFrom} type="number" placeholder="Min" /><input bind:value={relatedTo} type="number" placeholder="Max" /></div></label>
     <label class="filter"><span>Season</span><select bind:value={seasonFilter}><option value="">Any</option>{#each facets?.seasons ?? [] as item}<option value={item.value}>{label(item.value)}</option>{/each}</select></label>
-  </div>
-  <details class="advanced"><summary>More filters</summary><div class="filters">
     <label class="filter"><span>Status</span><select bind:value={status}><option value="">Any</option>{#each facets?.statuses ?? [] as item}<option value={item.value}>{label(item.value)}</option>{/each}</select></label>
     <label class="filter"><span>Source</span><select bind:value={source}><option value="">Any</option>{#each facets?.sources ?? [] as item}<option value={item.value}>{label(item.value)}</option>{/each}</select></label>
     <FacetPicker label="Genres" options={facets?.genres ?? []} bind:value={genres} />
     <FacetPicker label="Studios" options={facets?.studios ?? []} bind:value={studios} />
-  </div></details>
+  </div>
   {#if error}<div class="error">{error}</div>{/if}
   <DataTable {rows} {columns} rowKey={(row) => row.id} rowMeta={(row) => ({ title: row.title, subtitle: `${label(row.mediaType)} · ${season(row.season, row.year)}`, imageUrl: row.imageUrl, href: row.malUrl, imageTone: listStatusTone(userById.get(row.id)?.user.status) })} {total} {loading} hasMore={cursor !== null} loadMore={() => load(false)} />
 </div>

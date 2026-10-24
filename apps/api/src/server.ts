@@ -44,7 +44,7 @@ app.get('/v1/franchises/:id', async (request, reply) => {
 app.get('/v1/recommendations/:id', async (request, reply) => {
   const id = Number((request.params as { id: string }).id);
   if (!Number.isInteger(id) || id <= 0) return reply.code(400).send({ error: 'Invalid anime ID' });
-  const key = `recommendations:${databaseRevision}:${id}`;
+  const key = `recommendations:v2:${databaseRevision}:${id}`;
   let result = responseCache.get(key) as ReturnType<typeof getRecommendations> | undefined;
   if (!result) { result = getRecommendations(id); if (result) responseCache.set(key, result, 60 * 60_000); }
   if (!result) return reply.code(404).send({ error: 'Anime not found' });
