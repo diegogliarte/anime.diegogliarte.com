@@ -27,26 +27,39 @@
 
   let {
     rows, columns, rowKey, rowMeta, total = rows.length, loading = false, hasMore = false,
-    loadMore, empty = 'No entries', columnStorageKey
+    loadMore, empty = 'No entries', columnStorageKey, searchable = true,
+    searchPlaceholder = 'Search table…'
   }: {
     rows: Row[]; columns: TableColumn<Row>[]; rowKey: (row: Row) => string | number;
     rowMeta?: (row: Row) => RowMeta; total?: number; loading?: boolean; hasMore?: boolean;
     loadMore?: () => void | Promise<void>; empty?: string; columnStorageKey?: string;
+    searchable?: boolean; searchPlaceholder?: string;
   } = $props();
 
   let sentinel = $state<HTMLDivElement>();
   let sortKey = $state<string | null>(null);
   let direction = $state<'asc' | 'desc'>('asc');
+  let tableQuery = $state('');
   let hiddenColumns = $state<string[]>([]);
   let loadedColumnStorageKey = $state('');
   let loadingRequested = false;
 
   const columnPreferenceKey = $derived(`youranimelist:columns:${columnStorageKey ?? columns.map((column) => column.key).join(',')}`);
   const visibleColumns = $derived(columns.filter((column) => !hiddenColumns.includes(column.key)));
+  const filtered = $derived.by(() => {
+    const query = tableQuery.trim().toLocaleLowerCase();
+    if (!query) return rows;
+    return rows.filter((row) => {
+      const meta = rowMeta?.(row);
+      const values = columns.map((column) => column.value(row));
+      return [meta?.title, meta?.subtitle, ...(meta?.tags ?? []), ...values]
+        .some((value) => value != null && String(value).toLocaleLowerCase().includes(query));
+    });
+  });
   const sorted = $derived.by(() => {
     const column = columns.find((item) => item.key === sortKey);
-    if (!column) return rows;
-    return [...rows].sort((a, b) => {
+    if (!column) return filtered;
+    return [...filtered].sort((a, b) => {
       const first = column.value(a); const second = column.value(b);
       if (first == null && second == null) return 0;
       if (first == null) return 1; if (second == null) return -1;
@@ -116,9 +129,10 @@
 
 <div class="data-table">
   <div class="table-count">
-    <span>{rows.length.toLocaleString()} / {total.toLocaleString()}</span>
+    <span>{#if tableQuery.trim()}{filtered.length.toLocaleString()} / {rows.length.toLocaleString()} loaded{:else}{rows.length.toLocaleString()} / {total.toLocaleString()}{/if}</span>
     <div class="table-tools">
       {#if loading}<span>Loading…</span>{/if}
+      {#if searchable}<input class="table-search" bind:value={tableQuery} placeholder={searchPlaceholder} aria-label="Search table rows" />{/if}
       <details class="column-picker">
         <summary>Columns</summary>
         <div class="column-picker-menu">

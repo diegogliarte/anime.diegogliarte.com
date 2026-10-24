@@ -5,7 +5,8 @@
   import { appState } from '$lib/state/app.svelte';
   import { adjustedUserScore, decimal, duration, label, number, userScoreLabel } from '$lib/data/format';
 
-  type Group = { name: string; count: number; items: UserAnime[] };
+  type BreakdownMetric = 'count' | 'mean' | 'weighted';
+  type Group = { name: string; count: number; items: UserAnime[]; ratedCount: number; meanScore: number; weightedScore: number };
   type Ranked = { anime: UserAnime; value: string };
   type Stat = { label: string; value: string; hint: string; missing?: UserAnime[] };
 
@@ -31,6 +32,13 @@
   const plannedEpisodes = $derived(planned.reduce((sum, anime) => sum + (anime.episodes ?? 0), 0));
   const incompleteCompleted = $derived(completed.filter((anime) => anime.episodes && anime.user.watchedEpisodes < anime.episodes));
   const missingFinishDate = $derived(completed.filter((anime) => !anime.user.finishDate));
+  const decided = $derived([...completed, ...dropped]);
+  const knownStarted = $derived(appState.userList.filter((anime) => anime.user.status !== 'plan_to_watch' && (anime.episodes ?? 0) > 0));
+  const knownEpisodeProgress = $derived(knownStarted.reduce((sum, anime) => sum + Math.min(anime.user.watchedEpisodes, anime.episodes ?? 0), 0));
+  const knownEpisodeTotal = $derived(knownStarted.reduce((sum, anime) => sum + (anime.episodes ?? 0), 0));
+  const medianScore = $derived(median(rated.map((anime) => adjustedUserScore(anime) ?? 0)));
+  const meanAbsoluteDifference = $derived(average(comparable.map((anime) => Math.abs(scoreDifference(anime)))));
+  let breakdownMetric = $state<BreakdownMetric>('count');
 
   const stats = $derived<Stat[]>([
     { label: 'Completed', value: number(completed.length), hint: `${number(appState.userList.length)} total entries` },
@@ -48,7 +56,11 @@
     { label: 'Backlog', value: number(planned.length), hint: `${number(plannedEpisodes)} known episodes` },
     { label: 'In progress', value: number(inProgress.length), hint: `${number(remainingEpisodes)} known episodes remaining` },
     { label: 'Episode integrity', value: percent(completed.length - incompleteCompleted.length, completed.length), hint: `${number(incompleteCompleted.length)} incomplete · click to inspect`, missing: incompleteCompleted },
-    { label: 'Finish-date coverage', value: percent(completed.length - missingFinishDate.length, completed.length), hint: `${number(missingFinishDate.length)} missing · click to inspect`, missing: missingFinishDate }
+    { label: 'Finish-date coverage', value: percent(completed.length - missingFinishDate.length, completed.length), hint: `${number(missingFinishDate.length)} missing · click to inspect`, missing: missingFinishDate },
+    { label: 'Median score', value: decimal(medianScore, 2), hint: 'less distorted by score extremes' },
+    { label: 'MAL disagreement', value: decimal(meanAbsoluteDifference, 2), hint: 'mean absolute score difference' },
+    { label: 'Finish rate', value: percent(completed.length, decided.length), hint: `${number(completed.length)} completed vs ${number(dropped.length)} dropped` },
+    { label: 'Episode completion', value: percent(knownEpisodeProgress, knownEpisodeTotal), hint: `${number(knownEpisodeProgress)} / ${number(knownEpisodeTotal)} known started episodes` }
   ]);
 
   const breakdowns = $derived([
@@ -60,8 +72,8 @@
     { title: 'Completed seasons', rows: group(completed, (anime) => label(anime.season)) },
     { title: 'Top release years', rows: group(completed, (anime) => anime.year ? String(anime.year) : 'Unknown').slice(0, 12) },
     { title: 'Episode length', rows: group(completed, episodeBucket) },
-    { title: 'Top genres', rows: groupMany(completed, (anime) => anime.genres).slice(0, 10) },
-    { title: 'Top studios', rows: groupMany(completed, (anime) => anime.studios).slice(0, 10) }
+    { title: 'Top genres', rows: rankGroups(groupMany(completed, (anime) => anime.genres), breakdownMetric).slice(0, 10), scorable: true },
+    { title: 'Top studios', rows: rankGroups(groupMany(completed, (anime) => anime.studios), breakdownMetric).slice(0, 10), scorable: true }
   ]);
 
   const longest = $derived<Ranked[]>(completed
@@ -82,6 +94,7 @@
     .sort((a, b) => (a.popularity ?? Infinity) - (b.popularity ?? Infinity)).slice(0, 8));
 
   function average(values: number[]) { return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0; }
+  function median(values: number[]) { const sorted = [...values].sort((a, b) => a - b); const middle = Math.floor(sorted.length / 2); return sorted.length ? (sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2) : 0; }
   function deviation(values: number[]) { const mean = average(values); return values.length ? Math.sqrt(average(values.map((value) => (value - mean) ** 2))) : 0; }
   function percent(value: number, total: number) { return total ? `${decimal(value / total * 100, 1)}%` : '—'; }
   function signed(value: number) { return `${value >= 0 ? '+' : ''}${decimal(value, 2)}`; }
@@ -89,12 +102,22 @@
   function group(items: UserAnime[], key: (anime: UserAnime) => string): Group[] {
     const groups = new Map<string, UserAnime[]>();
     for (const anime of items) { const name = key(anime); groups.set(name, [...(groups.get(name) ?? []), anime]); }
-    return [...groups].map(([name, grouped]) => ({ name, count: grouped.length, items: grouped })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    return [...groups].map(([name, grouped]) => makeGroup(name, grouped)).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   }
   function groupMany(items: UserAnime[], keys: (anime: UserAnime) => string[] | undefined): Group[] {
     const groups = new Map<string, UserAnime[]>();
     for (const anime of items) for (const name of keys(anime) ?? []) groups.set(name, [...(groups.get(name) ?? []), anime]);
-    return [...groups].map(([name, grouped]) => ({ name, count: grouped.length, items: grouped })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    return [...groups].map(([name, grouped]) => makeGroup(name, grouped)).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  }
+  function makeGroup(name: string, items: UserAnime[]): Group {
+    const scores = items.map(adjustedUserScore).filter((score): score is number => score != null);
+    const groupMean = average(scores);
+    const priorWeight = 5;
+    return { name, count: items.length, items, ratedCount: scores.length, meanScore: groupMean, weightedScore: scores.length ? (scores.reduce((sum, score) => sum + score, 0) + meanScore * priorWeight) / (scores.length + priorWeight) : 0 };
+  }
+  function rankGroups(groups: Group[], metric: BreakdownMetric) {
+    const value = (group: Group) => metric === 'count' ? group.count : metric === 'mean' ? group.meanScore : group.weightedScore;
+    return [...groups].sort((a, b) => value(b) - value(a) || b.ratedCount - a.ratedCount || a.name.localeCompare(b.name));
   }
   function episodeBucket(anime: UserAnime) {
     const episodes = anime.episodes ?? 0;
@@ -116,7 +139,7 @@
       {/each}
     </div>
     <div class="breakdowns">
-      {#each breakdowns as breakdown (breakdown.title)}{@render Breakdown(breakdown.title, breakdown.rows)}{/each}
+      {#each breakdowns as breakdown (breakdown.title)}{@render Breakdown(breakdown.title, breakdown.rows, breakdown.scorable ?? false)}{/each}
     </div>
     <div class="insights-grid">
       {@render Ranking('Longest completed', longest)}
@@ -128,13 +151,13 @@
       {@render Showcase('Most obscure', 'Completed anime you rated 8+, sorted by popularity rank.', mostObscure, 'popularity')}
       {@render Showcase('Popular misses', 'Popular completed anime you scored 6 or lower.', popularMisses, 'popularity')}
     </div>
-    <p class="stats-note">Plus and minus tags adjust scores by ±0.25. Watch time includes completed rewatches and uses MAL episode duration where available.</p>
+    <p class="stats-note">Plus and minus tags adjust scores by ±0.25. Watch time includes completed rewatches and uses MAL episode duration where available. Weighted rankings pull each group toward your overall mean by a five-rating prior, preventing tiny groups from dominating.</p>
   {:else}<EmptyState title="Load your list first" detail="Statistics are calculated locally and remain available offline." />{/if}
 </div>
 
-{#snippet Breakdown(title: string, rows: Group[])}
-  {@const maximum = Math.max(...rows.map((row) => row.count), 1)}
-  <section class="breakdown"><h2>{title}</h2>{#each rows as row (row.name)}<details class="breakdown-row"><summary class="bar-row"><span>{row.name}</span><div class="bar"><i style:width={`${row.count / maximum * 100}%`}></i></div><code>{number(row.count)}</code></summary><div class="breakdown-items">{#each row.items as anime (anime.id)}<a href={anime.malUrl} target="_blank">{anime.title}</a>{/each}</div></details>{/each}</section>
+{#snippet Breakdown(title: string, rows: Group[], scorable: boolean)}
+  {@const maximum = scorable && breakdownMetric !== 'count' ? 10 : Math.max(...rows.map((row) => row.count), 1)}
+  <section class="breakdown"><div class="breakdown-heading"><h2>{title}</h2>{#if scorable}<div class="metric-toggle" aria-label={`${title} ranking metric`}>{#each [['count', 'Count'], ['mean', 'Mean'], ['weighted', 'Weighted']] as option}<button class:active={breakdownMetric === option[0]} onclick={() => breakdownMetric = option[0] as BreakdownMetric}>{option[1]}</button>{/each}</div>{/if}</div>{#each rows as row (row.name)}{@const metricValue = breakdownMetric === 'count' || !scorable ? row.count : breakdownMetric === 'mean' ? row.meanScore : row.weightedScore}<details class="breakdown-row"><summary class="bar-row"><span>{row.name}</span><div class="bar"><i style:width={`${metricValue / maximum * 100}%`}></i></div><code>{scorable && breakdownMetric !== 'count' ? (row.ratedCount ? decimal(metricValue, 2) : '—') : number(row.count)}</code></summary><div class="breakdown-items">{#each row.items as anime (anime.id)}<a href={anime.malUrl} target="_blank">{anime.title}</a>{/each}</div></details>{/each}</section>
 {/snippet}
 
 {#snippet Showcase(title: string, description: string, rows: UserAnime[], metric: 'mal' | 'popularity')}

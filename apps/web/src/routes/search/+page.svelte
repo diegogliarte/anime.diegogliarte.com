@@ -16,7 +16,7 @@
   let scoreFrom = $state(''); let scoreTo = $state(''); let relatedFrom = $state(''); let relatedTo = $state('');
   let status = $state(''); let source = $state(''); let seasonFilter = $state(''); let episodesFrom = $state(''); let episodesTo = $state('');
   let genres = $state<number[]>([]); let studios = $state<number[]>([]); let request = 0; let timer: ReturnType<typeof setTimeout> | undefined;
-  const columns = animeColumns().map((column) => ({ ...column, sortable: false }));
+  const columns = animeColumns();
   const userById = $derived(new Map(appState.userList.map((anime) => [anime.id, anime])));
   const signature = $derived(JSON.stringify({ q, sort, mediaType, yearFrom, yearTo, scoreFrom, scoreTo, relatedFrom, relatedTo, status, source, seasonFilter, episodesFrom, episodesTo, genres, studios }));
   const filters = (nextCursor?: string | null) => ({ q, sort, mediaType, yearFrom, yearTo, scoreFrom, scoreTo, relatedFrom, relatedTo, status, source, season: seasonFilter, episodesFrom, episodesTo, genres: genres.join(','), studios: studios.join(','), cursor: nextCursor ?? undefined, limit: 100 });
@@ -25,7 +25,10 @@
     try { facets = await api<Facets>('/v1/facets'); } catch { /* results can still load */ }
     const params = new URLSearchParams(location.search);
     q = params.get('q') ?? ''; sort = params.get('sort') ?? 'score_desc'; mediaType = params.get('mediaType') ?? '';
-    yearFrom = params.get('yearFrom') ?? ''; yearTo = params.get('yearTo') ?? ''; relatedFrom = params.get('relatedFrom') ?? ''; relatedTo = params.get('relatedTo') ?? '';
+    yearFrom = params.get('yearFrom') ?? ''; yearTo = params.get('yearTo') ?? ''; scoreFrom = params.get('scoreFrom') ?? ''; scoreTo = params.get('scoreTo') ?? '';
+    relatedFrom = params.get('relatedFrom') ?? ''; relatedTo = params.get('relatedTo') ?? ''; status = params.get('status') ?? ''; source = params.get('source') ?? '';
+    seasonFilter = params.get('season') ?? ''; episodesFrom = params.get('episodesFrom') ?? ''; episodesTo = params.get('episodesTo') ?? '';
+    genres = params.get('genres')?.split(',').map(Number).filter(Boolean) ?? []; studios = params.get('studios')?.split(',').map(Number).filter(Boolean) ?? [];
     initialized = true; await load(true);
   });
 
@@ -44,7 +47,7 @@
     loading = true; error = null;
     const params = queryString(filters(targetCursor));
     if (reset) {
-      history.replaceState(null, '', `/search?${queryString({ q, sort: sort === 'score_desc' ? '' : sort, mediaType, yearFrom, yearTo, relatedFrom, relatedTo })}`);
+      history.replaceState(null, '', `/search?${queryString({ username: appState.loadedUsername || appState.username || new URLSearchParams(location.search).get('username') || '', q, sort: sort === 'score_desc' ? '' : sort, mediaType, yearFrom, yearTo, scoreFrom, scoreTo, relatedFrom, relatedTo, status, source, season: seasonFilter, episodesFrom, episodesTo, genres: genres.join(','), studios: studios.join(',') })}`);
       const cached = await readCache<AnimePage>(`search:${params}`);
       if (cached) { rows = cached.value.items; total = cached.value.total; cursor = cached.value.nextCursor; }
     }
