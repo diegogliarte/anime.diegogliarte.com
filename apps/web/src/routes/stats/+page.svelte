@@ -10,6 +10,7 @@
   type Ranked = { anime: UserAnime; value: string };
   type Stat = { label: string; value: string; hint: string; missing?: UserAnime[] };
   type FunStat = { label: string; value: string; hint: string; items?: UserAnime[]; itemValue?: (anime: UserAnime) => string };
+  const episodeBucketOrder = ['1', '2–6', '7–13', '14–26', '27–52', '53–99', '100+', 'Unknown'];
 
   const completed = $derived(appState.userList.filter((anime) => anime.user.status === 'completed'));
   const planned = $derived(appState.userList.filter((anime) => anime.user.status === 'plan_to_watch'));
@@ -94,7 +95,7 @@
     { title: 'Completed decades', rows: group(completed, (anime) => anime.year ? `${Math.floor(anime.year / 10) * 10}s` : 'Unknown').sort((a, b) => b.name.localeCompare(a.name)) },
     { title: 'Completed seasons', rows: group(completed, (anime) => label(anime.season)) },
     { title: 'Top release years', rows: group(completed, (anime) => anime.year ? String(anime.year) : 'Unknown').slice(0, 12) },
-    { title: 'Episode length', rows: group(completed, episodeBucket) },
+    { title: 'Episode length', rows: group(completed, episodeBucket).sort((a, b) => episodeBucketOrder.indexOf(a.name) - episodeBucketOrder.indexOf(b.name)) },
     { title: 'Top genres', rows: rankGroups(groupMany(completed, (anime) => anime.genres), breakdownMetric).slice(0, 10), scorable: true },
     { title: 'Top studios', rows: rankGroups(groupMany(completed, (anime) => anime.studios), breakdownMetric).slice(0, 10), scorable: true }
   ]);
