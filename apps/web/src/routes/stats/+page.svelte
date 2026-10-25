@@ -9,7 +9,6 @@
   type Group = { name: string; count: number; items: UserAnime[]; ratedCount: number; meanScore: number; weightedScore: number };
   type Ranked = { anime: UserAnime; value: string };
   type Stat = { label: string; value: string; hint: string; missing?: UserAnime[] };
-  type FunStat = { label: string; value: string; hint: string; items?: UserAnime[]; itemValue?: (anime: UserAnime) => string };
   const episodeBucketOrder = ['1', '2–6', '7–13', '14–26', '27–52', '53–99', '100+', 'Unknown'];
 
   const completed = $derived(appState.userList.filter((anime) => anime.user.status === 'completed'));
@@ -40,19 +39,6 @@
   const knownEpisodeTotal = $derived(knownStarted.reduce((sum, anime) => sum + (anime.episodes ?? 0), 0));
   const medianScore = $derived(median(rated.map((anime) => adjustedUserScore(anime) ?? 0)));
   const meanAbsoluteDifference = $derived(average(comparable.map((anime) => Math.abs(scoreDifference(anime)))));
-  const perfectScores = $derived(rated.filter((anime) => anime.user.score === 10));
-  const oneSitting = $derived(completed.filter((anime) => {
-    const runtime = (anime.episodes ?? 0) * (anime.episodeDuration ?? 0);
-    return runtime > 0 && runtime <= 3 * 60 * 60;
-  }));
-  const pacedCompletions = $derived(completed
-    .filter((anime) => completionDays(anime) != null)
-    .sort((a, b) => (completionDays(b) ?? 0) - (completionDays(a) ?? 0)));
-  const medianCompletionDays = $derived(median(pacedCompletions.map((anime) => completionDays(anime) ?? 0)));
-  const medianDropPoint = $derived(median(dropped.map((anime) => anime.user.watchedEpisodes)));
-  const plannedWithRuntime = $derived(planned.filter((anime) => anime.episodes && anime.episodeDuration));
-  const plannedSeconds = $derived(plannedWithRuntime.reduce((sum, anime) => sum + (anime.episodes ?? 0) * (anime.episodeDuration ?? 0), 0));
-  const completedYears = $derived(completed.map((anime) => anime.year).filter((year): year is number => year != null).sort((a, b) => a - b));
   let breakdownMetric = $state<BreakdownMetric>('count');
 
   const stats = $derived<Stat[]>([
@@ -76,15 +62,6 @@
     { label: 'MAL disagreement', value: decimal(meanAbsoluteDifference, 2), hint: 'mean absolute score difference' },
     { label: 'Finish rate', value: percent(completed.length, decided.length), hint: `${number(completed.length)} completed vs ${number(dropped.length)} dropped` },
     { label: 'Episode completion', value: percent(knownEpisodeProgress, knownEpisodeTotal), hint: `${number(knownEpisodeProgress)} / ${number(knownEpisodeTotal)} known started episodes` }
-  ]);
-
-  const funStats = $derived<FunStat[]>([
-    { label: 'Perfect-score rate', value: percent(perfectScores.length, rated.length), hint: `${number(perfectScores.length)} of ${number(rated.length)} completed ratings are 10/10`, items: perfectScores },
-    { label: 'Median drop point', value: dropped.length ? `${decimal(medianDropPoint, 1)} eps` : '—', hint: `${number(dropped.length)} dropped titles`, items: dropped, itemValue: (anime) => `${number(anime.user.watchedEpisodes)} eps` },
-    { label: 'Short-form finishes', value: number(oneSitting.length), hint: 'completed total runtime of 3 hours or less', items: oneSitting, itemValue: (anime) => duration((anime.episodes ?? 0) * (anime.episodeDuration ?? 0)) },
-    { label: 'Median completion time', value: pacedCompletions.length ? `${decimal(medianCompletionDays, 1)} days` : '—', hint: `${number(pacedCompletions.length)} titles with valid start and finish dates`, items: pacedCompletions, itemValue: (anime) => `${number(completionDays(anime))} days` },
-    { label: 'Backlog runtime', value: duration(plannedSeconds), hint: plannedSeconds ? `${number(Math.ceil(plannedSeconds / 7200))} days at 2 hours/day · ${number(plannedWithRuntime.length)} known runtimes` : 'no known planned runtime' },
-    { label: 'Release-year range', value: completedYears.length ? `${number(completedYears.at(-1)! - completedYears[0])} years` : '—', hint: completedYears.length ? `${completedYears[0]} to ${completedYears.at(-1)}` : 'no known release years' }
   ]);
 
   const breakdowns = $derived([
@@ -123,12 +100,6 @@
   function percent(value: number, total: number) { return total ? `${decimal(value / total * 100, 1)}%` : '—'; }
   function signed(value: number) { return `${value >= 0 ? '+' : ''}${decimal(value, 2)}`; }
   function scoreDifference(anime: UserAnime) { return (adjustedUserScore(anime) ?? 0) - (anime.score ?? 0); }
-  function completionDays(anime: UserAnime) {
-    if (!anime.user.startDate || !anime.user.finishDate) return null;
-    const start = Date.parse(anime.user.startDate); const finish = Date.parse(anime.user.finishDate);
-    if (!Number.isFinite(start) || !Number.isFinite(finish) || finish < start) return null;
-    return Math.round((finish - start) / 86_400_000);
-  }
   function group(items: UserAnime[], key: (anime: UserAnime) => string): Group[] {
     const groups = new Map<string, UserAnime[]>();
     for (const anime of items) { const name = key(anime); groups.set(name, [...(groups.get(name) ?? []), anime]); }
@@ -168,16 +139,6 @@
         {:else}<div class="stat"><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.hint}</small></div>{/if}
       {/each}
     </div>
-    <section class="taste-profile">
-      <div class="section-heading"><h2>Viewing profile</h2><span>Literal habits derived from your list.</span></div>
-      <div class="stats-grid taste-grid">
-        {#each funStats as stat (stat.label)}
-          {#if stat.items?.length}
-            <details class="stat stat-expandable"><summary><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.hint}</small></summary><div class="stat-missing">{#each stat.items as anime (anime.id)}<a href={anime.malUrl} target="_blank"><span>{anime.title}</span>{#if stat.itemValue}<small>{stat.itemValue(anime)}</small>{/if}</a>{/each}</div></details>
-          {:else}<div class="stat"><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.hint}</small></div>{/if}
-        {/each}
-      </div>
-    </section>
     <div class="breakdowns">
       {#each breakdowns as breakdown (breakdown.title)}{@render Breakdown(breakdown.title, breakdown.rows, breakdown.scorable ?? false)}{/each}
     </div>
