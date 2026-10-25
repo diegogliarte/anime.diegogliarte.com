@@ -22,7 +22,7 @@
     return values;
   });
   const columns = $derived<TableColumn<AnimeSummary>[]>([
-    ...animeColumns().filter((column) => ['title', 'score', 'episodes', 'season', 'startDate', 'endDate', 'type', 'related'].includes(column.key)),
+    ...animeColumns().filter((column) => ['title', 'score', 'episodes', 'season', 'startDate', 'endDate', 'type', 'related', 'episodeDuration', 'runtime'].includes(column.key)),
     { key: 'relation', label: 'Relations', value: (row) => edgeLabels.get(row.id)?.join(', ') ?? (row.id === franchise?.seedId ? 'Seed' : '—'), width: '190px' }
   ]);
   const franchiseStats = $derived.by(() => {

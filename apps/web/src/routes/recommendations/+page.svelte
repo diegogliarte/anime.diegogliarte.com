@@ -18,7 +18,7 @@
     { key: 'recommendationScore', label: 'Signal', value: (row) => row.recommendationScore, format: (value) => decimal(value as number), width: '75px', align: 'right', tone: () => 'strong' },
     { key: 'sources', label: 'Sources', value: (row) => row.sourceCount, format: (value) => number(value as number), width: '70px', align: 'right' },
     { key: 'votes', label: 'Votes', value: (row) => row.recommendationCount, format: (value) => number(value as number), width: '70px', align: 'right' },
-    ...animeColumns().filter((column) => ['score', 'episodes', 'season', 'startDate', 'endDate', 'type', 'related'].includes(column.key)) as TableColumn<Recommendation>[],
+    ...animeColumns().filter((column) => ['score', 'episodes', 'season', 'startDate', 'endDate', 'type', 'related', 'episodeDuration', 'runtime'].includes(column.key)) as TableColumn<Recommendation>[],
     { key: 'why', label: 'Recommended through', value: (row) => row.sources.map((source) => source.title).join(', '), width: '250px', sortable: false }
   ];
   onMount(() => { const id = Number(new URLSearchParams(location.search).get('id')); if (id) void load(id); });
