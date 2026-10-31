@@ -8,8 +8,47 @@ services:
       SQLITE_PATH: /data/mal_anime.sqlite
       MAL_CLIENT_ID: ${MAL_CLIENT_ID}
       CORS_ORIGINS: https://anime.diegogliarte.com
+      CRAWLER_STATUS_PATH: /data/crawler-status.json
+      CRAWLER_LOG_PATH: /data/crawler.log
     volumes:
-      - ${SQLITE_HOST_PATH:-./mal_anime.sqlite}:/data/mal_anime.sqlite:ro
+      - ${SQLITE_HOST_DIR:-./data}:/data:ro
+    networks:
+      - caddy-youranimelist-api
+
+  youranimelist-crawler:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      MAL_CLIENT_ID: ${MAL_CLIENT_ID}
+    command:
+      - node
+      - apps/api/dist/crawler.js
+      - --source
+      - /data/mal_anime.sqlite
+      - --database
+      - /data/mal_anime.work.sqlite
+      - --mode
+      - full
+      - --schedule
+      - continuous
+      - --publish
+      - "true"
+      - --min-delay-ms
+      - "1000"
+      - --max-delay-ms
+      - "3000"
+      - --miss-limit
+      - "1000"
+      - --interval-hours
+      - ${CRAWLER_INTERVAL_HOURS:-168}
+      - --status-file
+      - /data/crawler-status.json
+      - --log-file
+      - /data/crawler.log
+    volumes:
+      - ${SQLITE_HOST_DIR:-./data}:/data
     networks:
       - caddy-youranimelist-api
 

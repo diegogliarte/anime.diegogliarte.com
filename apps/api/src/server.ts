@@ -1,10 +1,12 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import { stat } from 'node:fs/promises';
 import type { FranchiseScope } from '@youranimelist/shared';
 import { LruCache, PRIVATE_CACHE, PUBLIC_CACHE, sendJson } from './cache.js';
 import { getAnimePage, getFacets, getMissingEntries, getRecommendations } from './catalog.js';
 import { databaseRevision, getFranchise } from './database.js';
 import { fetchUserList } from './mal.js';
+import { getCrawlerStatus } from './crawler-status.js';
 
 const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
 const origins = (process.env.CORS_ORIGINS ?? 'https://anime.diegogliarte.com,http://localhost:5173').split(',').map((value) => value.trim());
@@ -13,6 +15,12 @@ await app.register(cors, { origin: origins, methods: ['GET', 'POST', 'OPTIONS'] 
 const responseCache = new LruCache<unknown>(300);
 
 app.get('/health', async () => ({ ok: true, revision: databaseRevision }));
+
+app.get('/v1/crawler', async (request, reply) => {
+  const includeLogs = (request.query as { logs?: string }).logs !== '0';
+  reply.header('Cache-Control', 'no-store');
+  return reply.send(await getCrawlerStatus(includeLogs));
+});
 
 app.get('/v1/facets', async (request, reply) => {
   const key = `facets:${databaseRevision}`;
@@ -75,3 +83,15 @@ app.get('/v1/users/:username/list', async (request, reply) => {
 const port = Number(process.env.PORT ?? 3001);
 const host = process.env.HOST ?? '0.0.0.0';
 await app.listen({ port, host });
+
+const sqlitePath = process.env.SQLITE_PATH ?? 'mal_anime.sqlite';
+const initialDatabase = await stat(sqlitePath).catch(() => null);
+const databaseWatcher = setInterval(async () => {
+  const current = await stat(sqlitePath).catch(() => null);
+  if (!initialDatabase || !current) return;
+  if (current.ino !== initialDatabase.ino || current.mtimeMs !== initialDatabase.mtimeMs || current.size !== initialDatabase.size) {
+    app.log.info('Database snapshot changed; restarting to load the new revision.');
+    process.exit(0);
+  }
+}, 30_000);
+databaseWatcher.unref();

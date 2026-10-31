@@ -41,7 +41,17 @@ cd apps/api
 docker compose up -d --build
 ```
 
-Set `MAL_CLIENT_ID` and `SQLITE_HOST_PATH` in `apps/api/.env`. The database is mounted read-only inside the container.
+Set `MAL_CLIENT_ID` and `SQLITE_HOST_DIR` in `apps/api/.env`. The API mounts the database directory read-only.
+
+The production Compose file also runs the catalog crawler. Set `SQLITE_HOST_DIR` to the directory containing `mal_anime.sqlite`; the API mounts it read-only while the crawler maintains a separate working copy. Each weekly pass:
+
+- refreshes every known anime sequentially with a random 1–3 second delay;
+- rechecks one quarter of historical 404s;
+- discovers new sequential IDs until 1,000 consecutive misses;
+- validates and atomically publishes the completed SQLite snapshot;
+- keeps the previous snapshot as `mal_anime.sqlite.previous`.
+
+The crawler resumes an interrupted working copy and never publishes a partial pass. Live metrics and the latest 100 sanitized log lines are available on the subtle `/maintenance` page.
 
 Caddy only needs to proxy the API domain to the container:
 

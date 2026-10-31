@@ -69,6 +69,7 @@ function buildWhere(query: Query) {
   for (const [queryKey, expression, operation] of [
     ['yearFrom', 'a.start_season_year', '>='], ['yearTo', 'a.start_season_year', '<='],
     ['scoreFrom', 'a.mean', '>='], ['scoreTo', 'a.mean', '<='],
+    ['popularityFrom', 'NULLIF(a.popularity, 0)', '>='], ['popularityTo', 'NULLIF(a.popularity, 0)', '<='],
     ['episodesFrom', 'a.num_episodes', '>='], ['episodesTo', 'a.num_episodes', '<='],
     ['relatedFrom', RELATED_COUNT_SQL, '>='], ['relatedTo', RELATED_COUNT_SQL, '<=']
   ] as const) {
@@ -76,6 +77,19 @@ function buildWhere(query: Query) {
     if (value !== null) {
       where.push(`${expression} ${operation} @${queryKey}`);
       params[queryKey] = value;
+    }
+  }
+
+  for (const [queryKey, expression, operation, secondsPerUnit] of [
+    ['episodeDurationFrom', 'NULLIF(a.average_episode_duration, 0)', '>=', 60],
+    ['episodeDurationTo', 'NULLIF(a.average_episode_duration, 0)', '<=', 60],
+    ['runtimeFrom', '(NULLIF(a.num_episodes, 0) * NULLIF(a.average_episode_duration, 0))', '>=', 3600],
+    ['runtimeTo', '(NULLIF(a.num_episodes, 0) * NULLIF(a.average_episode_duration, 0))', '<=', 3600]
+  ] as const) {
+    const value = numeric(query[queryKey]);
+    if (value !== null) {
+      where.push(`${expression} ${operation} @${queryKey}`);
+      params[queryKey] = value * secondsPerUnit;
     }
   }
 

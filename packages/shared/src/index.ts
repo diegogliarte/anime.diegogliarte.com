@@ -114,3 +114,30 @@ export type UserListResponse = {
 };
 
 export type ApiError = { error: string };
+
+export type CrawlerState = 'unavailable' | 'idle' | 'running' | 'failed';
+
+export type CrawlerStatus = {
+  state: CrawlerState;
+  phase: 'refresh' | 'discovery' | 'waiting' | null;
+  passNumber: number | null;
+  currentId: number | null;
+  scanLimit: number | null;
+  requests: number;
+  refreshed: number;
+  discovered: number;
+  notFound: number;
+  errors: number;
+  skipped: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  lastRequestAt: string | null;
+  lastSuccessAt: string | null;
+  nextScheduledAt: string | null;
+  message: string | null;
+};
+
+export type CrawlerStatusResponse = {
+  status: CrawlerStatus;
+  logs: string[];
+};

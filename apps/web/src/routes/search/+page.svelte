@@ -15,19 +15,24 @@
   let q = $state(''); let sort = $state('score_desc'); let mediaType = $state(''); let yearFrom = $state(''); let yearTo = $state('');
   let scoreFrom = $state(''); let scoreTo = $state(''); let relatedFrom = $state(''); let relatedTo = $state('');
   let status = $state(''); let source = $state(''); let seasonFilter = $state(''); let episodesFrom = $state(''); let episodesTo = $state('');
+  let popularityFrom = $state(''); let popularityTo = $state(''); let episodeDurationFrom = $state(''); let episodeDurationTo = $state('');
+  let runtimeFrom = $state(''); let runtimeTo = $state('');
   let genres = $state<number[]>([]); let studios = $state<number[]>([]); let request = 0; let timer: ReturnType<typeof setTimeout> | undefined;
   const columns = animeColumns();
   const userById = $derived(new Map(appState.userList.map((anime) => [anime.id, anime])));
-  const signature = $derived(JSON.stringify({ q, sort, mediaType, yearFrom, yearTo, scoreFrom, scoreTo, relatedFrom, relatedTo, status, source, seasonFilter, episodesFrom, episodesTo, genres, studios }));
-  const filters = (nextCursor?: string | null) => ({ q, sort, mediaType, yearFrom, yearTo, scoreFrom, scoreTo, relatedFrom, relatedTo, status, source, season: seasonFilter, episodesFrom, episodesTo, genres: genres.join(','), studios: studios.join(','), cursor: nextCursor ?? undefined, limit: 100 });
+  const signature = $derived(JSON.stringify({ q, sort, mediaType, yearFrom, yearTo, scoreFrom, scoreTo, popularityFrom, popularityTo, relatedFrom, relatedTo, status, source, seasonFilter, episodesFrom, episodesTo, episodeDurationFrom, episodeDurationTo, runtimeFrom, runtimeTo, genres, studios }));
+  const filters = (nextCursor?: string | null) => ({ q, sort, mediaType, yearFrom, yearTo, scoreFrom, scoreTo, popularityFrom, popularityTo, relatedFrom, relatedTo, status, source, season: seasonFilter, episodesFrom, episodesTo, episodeDurationFrom, episodeDurationTo, runtimeFrom, runtimeTo, genres: genres.join(','), studios: studios.join(','), cursor: nextCursor ?? undefined, limit: 100 });
 
   onMount(async () => {
     try { facets = await api<Facets>('/v1/facets'); } catch { /* results can still load */ }
     const params = new URLSearchParams(location.search);
     q = params.get('q') ?? ''; sort = params.get('sort') ?? 'score_desc'; mediaType = params.get('mediaType') ?? '';
     yearFrom = params.get('yearFrom') ?? ''; yearTo = params.get('yearTo') ?? ''; scoreFrom = params.get('scoreFrom') ?? ''; scoreTo = params.get('scoreTo') ?? '';
+    popularityFrom = params.get('popularityFrom') ?? ''; popularityTo = params.get('popularityTo') ?? '';
     relatedFrom = params.get('relatedFrom') ?? ''; relatedTo = params.get('relatedTo') ?? ''; status = params.get('status') ?? ''; source = params.get('source') ?? '';
     seasonFilter = params.get('season') ?? ''; episodesFrom = params.get('episodesFrom') ?? ''; episodesTo = params.get('episodesTo') ?? '';
+    episodeDurationFrom = params.get('episodeDurationFrom') ?? ''; episodeDurationTo = params.get('episodeDurationTo') ?? '';
+    runtimeFrom = params.get('runtimeFrom') ?? ''; runtimeTo = params.get('runtimeTo') ?? '';
     genres = params.get('genres')?.split(',').map(Number).filter(Boolean) ?? []; studios = params.get('studios')?.split(',').map(Number).filter(Boolean) ?? [];
     initialized = true; await load(true);
   });
@@ -47,7 +52,7 @@
     loading = true; error = null;
     const params = queryString(filters(targetCursor));
     if (reset) {
-      history.replaceState(null, '', `/search?${queryString({ username: appState.loadedUsername || appState.username || new URLSearchParams(location.search).get('username') || '', q, sort: sort === 'score_desc' ? '' : sort, mediaType, yearFrom, yearTo, scoreFrom, scoreTo, relatedFrom, relatedTo, status, source, season: seasonFilter, episodesFrom, episodesTo, genres: genres.join(','), studios: studios.join(',') })}`);
+      history.replaceState(null, '', `/search?${queryString({ username: appState.loadedUsername || appState.username || new URLSearchParams(location.search).get('username') || '', q, sort: sort === 'score_desc' ? '' : sort, mediaType, yearFrom, yearTo, scoreFrom, scoreTo, popularityFrom, popularityTo, relatedFrom, relatedTo, status, source, season: seasonFilter, episodesFrom, episodesTo, episodeDurationFrom, episodeDurationTo, runtimeFrom, runtimeTo, genres: genres.join(','), studios: studios.join(',') })}`);
       const cached = await readCache<AnimePage>(`search:${params}`);
       if (cached) { rows = cached.value.items; total = cached.value.total; cursor = cached.value.nextCursor; }
     }
@@ -60,7 +65,7 @@
     } catch (cause) { if (current === request) error = cause instanceof Error ? cause.message : 'Search failed.'; }
     finally { if (current === request) loading = false; }
   }
-  function reset() { q=''; sort='score_desc'; mediaType=''; yearFrom=''; yearTo=''; scoreFrom=''; scoreTo=''; relatedFrom=''; relatedTo=''; status=''; source=''; seasonFilter=''; episodesFrom=''; episodesTo=''; genres=[]; studios=[]; }
+  function reset() { q=''; sort='score_desc'; mediaType=''; yearFrom=''; yearTo=''; scoreFrom=''; scoreTo=''; popularityFrom=''; popularityTo=''; relatedFrom=''; relatedTo=''; status=''; source=''; seasonFilter=''; episodesFrom=''; episodesTo=''; episodeDurationFrom=''; episodeDurationTo=''; runtimeFrom=''; runtimeTo=''; genres=[]; studios=[]; }
 </script>
 <svelte:head><title>Search DB · YourAnimeList</title></svelte:head>
 <div class="page">
@@ -70,7 +75,10 @@
     <label class="filter"><span>Media type</span><select bind:value={mediaType}><option value="">Any</option>{#each facets?.mediaTypes ?? [] as item}<option value={item.value}>{label(item.value)} ({item.count})</option>{/each}</select></label>
     <label class="filter"><span>Year</span><div class="filter-row"><input bind:value={yearFrom} type="number" placeholder={String(facets?.years.min ?? 'From')} /><input bind:value={yearTo} type="number" placeholder={String(facets?.years.max ?? 'To')} /></div></label>
     <label class="filter"><span>MAL score</span><div class="filter-row"><input bind:value={scoreFrom} type="number" step=".1" placeholder="Min" /><input bind:value={scoreTo} type="number" step=".1" placeholder="Max" /></div></label>
+    <label class="filter"><span>Popularity rank</span><div class="filter-row"><input bind:value={popularityFrom} type="number" min="1" placeholder="Min" /><input bind:value={popularityTo} type="number" min="1" placeholder="Max" /></div></label>
     <label class="filter"><span>Episodes</span><div class="filter-row"><input bind:value={episodesFrom} type="number" placeholder="Min" /><input bind:value={episodesTo} type="number" placeholder="Max" /></div></label>
+    <label class="filter"><span>Avg episode (minutes)</span><div class="filter-row"><input bind:value={episodeDurationFrom} type="number" min="0" step=".5" placeholder="Min" /><input bind:value={episodeDurationTo} type="number" min="0" step=".5" placeholder="Max" /></div></label>
+    <label class="filter"><span>Runtime (hours)</span><div class="filter-row"><input bind:value={runtimeFrom} type="number" min="0" step=".25" placeholder="Min" /><input bind:value={runtimeTo} type="number" min="0" step=".25" placeholder="Max" /></div></label>
     <label class="filter"><span>Related entries</span><div class="filter-row"><input bind:value={relatedFrom} type="number" placeholder="Min" /><input bind:value={relatedTo} type="number" placeholder="Max" /></div></label>
     <label class="filter"><span>Season</span><select bind:value={seasonFilter}><option value="">Any</option>{#each facets?.seasons ?? [] as item}<option value={item.value}>{label(item.value)}</option>{/each}</select></label>
     <label class="filter"><span>Status</span><select bind:value={status}><option value="">Any</option>{#each facets?.statuses ?? [] as item}<option value={item.value}>{label(item.value)}</option>{/each}</select></label>
