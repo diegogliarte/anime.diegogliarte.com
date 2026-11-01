@@ -203,7 +203,8 @@ function replaceChildren(db: Database.Database, anime: AnimeDetails) {
   for (const studio of anime.studios ?? []) { insertStudio.run(studio); linkStudio.run(animeId, studio.id); }
 
   const insertSynonym = db.prepare('INSERT INTO anime_synonym (anime_id, synonym, position) VALUES (?, ?, ?)');
-  for (const [position, synonym] of (anime.alternative_titles?.synonyms ?? []).entries()) insertSynonym.run(animeId, synonym, position);
+  const synonyms = [...new Set(anime.alternative_titles?.synonyms ?? [])];
+  for (const [position, synonym] of synonyms.entries()) insertSynonym.run(animeId, synonym, position);
 
   const insertPicture = db.prepare('INSERT INTO anime_picture (anime_id, position, medium, large) VALUES (?, ?, ?, ?)');
   for (const [position, picture] of (anime.pictures ?? []).entries()) insertPicture.run(animeId, position, picture.medium ?? null, picture.large ?? null);
