@@ -10,16 +10,17 @@
   import { animeColumns } from '$lib/data/columns';
   import { decimal, label, listStatusTone, number, season } from '$lib/data/format';
   import { appState } from '$lib/state/app.svelte';
+  type RecommendationRow = AnimeSummary & Partial<Pick<Recommendation, 'recommendationScore' | 'recommendationCount' | 'sourceCount' | 'reasons'>>;
   let result = $state<RecommendationResponse | null>(null); let loading = $state(false); let error = $state<string | null>(null);
   const userById = $derived(new Map(appState.userList.map((anime) => [anime.id, anime])));
-  const rows = $derived(result?.items ?? []);
-  const columns: TableColumn<Recommendation>[] = [
-    animeColumns()[0] as TableColumn<Recommendation>,
-    { key: 'recommendationScore', label: 'Relevance', value: (row) => row.recommendationScore, format: (value) => decimal(value as number), width: '85px', align: 'right', tone: () => 'strong' },
-    { key: 'sources', label: 'Sources', value: (row) => row.sourceCount, format: (value) => number(value as number), width: '70px', align: 'right' },
-    { key: 'votes', label: 'Direct votes', value: (row) => row.recommendationCount, format: (value) => number(value as number), width: '90px', align: 'right' },
-    ...animeColumns().filter((column) => ['score', 'episodes', 'season', 'startDate', 'endDate', 'type', 'related', 'episodeDuration', 'runtime'].includes(column.key)) as TableColumn<Recommendation>[],
-    { key: 'why', label: 'Why', value: (row) => row.reasons.join(' · '), width: '320px', sortable: false }
+  const rows = $derived(result ? [result.seed, ...result.items] : []);
+  const columns: TableColumn<RecommendationRow>[] = [
+    animeColumns()[0] as TableColumn<RecommendationRow>,
+    { key: 'recommendationScore', label: 'Relevance', value: (row) => row.recommendationScore ?? null, format: (value) => value == null ? '—' : decimal(value as number), width: '85px', align: 'right', tone: (row) => row.recommendationScore == null ? 'default' : 'strong' },
+    { key: 'sources', label: 'Sources', value: (row) => row.sourceCount ?? null, format: (value) => value == null ? '—' : number(value as number), width: '70px', align: 'right' },
+    { key: 'votes', label: 'Direct votes', value: (row) => row.recommendationCount ?? null, format: (value) => value == null ? '—' : number(value as number), width: '90px', align: 'right' },
+    ...animeColumns().filter((column) => ['score', 'episodes', 'season', 'startDate', 'endDate', 'type', 'related', 'episodeDuration', 'runtime'].includes(column.key)) as TableColumn<RecommendationRow>[],
+    { key: 'why', label: 'Why', value: (row) => row.reasons?.join(' · ') ?? null, width: '320px', sortable: false }
   ];
   onMount(() => { const id = Number(new URLSearchParams(location.search).get('id')); if (id) void load(id); });
   async function choose(anime: AnimeSummary) { history.replaceState(null, '', `/recommendations?id=${anime.id}`); await load(anime.id); }
