@@ -99,6 +99,16 @@ export type Recommendation = AnimeSummary & {
   recommendationCount: number;
   sourceCount: number;
   sources: { animeId: number; title: string; count: number }[];
+  recommendationKind: 'direct' | 'indirect' | 'metadata';
+  reasons: string[];
+  scoreBreakdown: {
+    graph: number;
+    genres: number;
+    synopsis: number;
+    compatibility: number;
+    supportBonus: number;
+    olderBonus: number;
+  };
 };
 
 export type RecommendationResponse = {
