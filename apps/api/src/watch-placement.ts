@@ -89,16 +89,7 @@ export function inferWatchPlacements(nodes: AnimeSummary[], edges: FranchiseEdge
     const withinSeries = best.overlaps ? episodePlacement(best.anchor, releaseTime) : null;
     if (withinSeries) {
       placements.set(anime.id, withinSeries);
-      continue;
     }
-
-    placements.set(anime.id, {
-      anchorAnimeId: best.anchor.id,
-      anchorTitle: best.anchor.title,
-      afterEpisode: (best.anchor.episodes ?? 0) > 1 ? best.anchor.episodes : null,
-      beforeEpisode: null,
-      basis: 'relation'
-    });
   }
 
   return placements;

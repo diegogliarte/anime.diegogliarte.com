@@ -23,16 +23,12 @@
   });
   function watchPlacementLabel(placement: WatchPlacement | null) {
     if (!placement) return null;
-    const { afterEpisode, beforeEpisode, anchorTitle, basis } = placement;
-    let position = `After ${anchorTitle}`;
-    if (afterEpisode !== null && beforeEpisode !== null) position = `≈ Between eps ${afterEpisode}–${beforeEpisode} of ${anchorTitle}`;
-    else if (afterEpisode !== null) position = `After ep ${afterEpisode} of ${anchorTitle}`;
-    else if (beforeEpisode !== null) position = `Before ep ${beforeEpisode} of ${anchorTitle}`;
-    return `${position} · ${basis === 'release_date' ? 'release timing' : 'relation order'}`;
+    const { afterEpisode, beforeEpisode, anchorTitle } = placement;
+    if (afterEpisode === null || beforeEpisode === null) return null;
+    return `≈ between eps ${afterEpisode}–${beforeEpisode} of ${anchorTitle} · release timing`;
   }
   const columns = $derived<TableColumn<FranchiseNode>[]>([
     ...animeColumns().filter((column) => ['title', 'score', 'episodes', 'season', 'startDate', 'endDate', 'type', 'related', 'episodeDuration', 'runtime'].includes(column.key)),
-    { key: 'watchPlacement', label: 'Suggested placement', value: (row) => watchPlacementLabel(row.watchPlacement), width: '330px', tone: (row) => row.watchPlacement ? 'positive' : 'default', sortable: false },
     { key: 'relation', label: 'Relations', value: (row) => edgeLabels.get(row.id)?.join(', ') ?? (row.id === franchise?.seedId ? 'Seed' : '—'), width: '190px' }
   ]);
   const franchiseStats = $derived.by(() => {
@@ -81,7 +77,7 @@
     <div><span>Avg eps/anime</span><strong>{franchiseStats.averageEpisodes.toFixed(1)}</strong><small>known episode counts</small></div>
   </div>{/if}
   {#if error}<div class="error">{error}</div>{/if}
-  {#if franchise}<DataTable rows={franchise.nodes} {columns} rowKey={(row) => row.id} rowMeta={(row) => { const user = userById.get(row.id); return { title: row.title, subtitle: `${label(row.mediaType)} · ${season(row.season, row.year)}`, imageUrl: row.imageUrl, href: row.malUrl, tags: user?.user.tags, imageTone: listStatusTone(user?.user.status) }; }} total={franchise.nodes.length} {loading} />
+  {#if franchise}<DataTable rows={franchise.nodes} {columns} rowKey={(row) => row.id} rowMeta={(row) => { const user = userById.get(row.id); const placement = watchPlacementLabel(row.watchPlacement); return { title: row.title, subtitle: `${label(row.mediaType)} · ${season(row.season, row.year)}${placement ? ` · ${placement}` : ''}`, imageUrl: row.imageUrl, href: row.malUrl, tags: user?.user.tags, imageTone: listStatusTone(user?.user.status) }; }} total={franchise.nodes.length} {loading} />
   {:else if loading}<div class="empty">Loading franchise…</div>
   {:else}<EmptyState title="Select an anime" detail="The last franchise you viewed will open automatically on your next visit." />{/if}
 </div>

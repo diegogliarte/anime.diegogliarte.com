@@ -81,7 +81,7 @@ export type WatchPlacement = {
   anchorTitle: string;
   afterEpisode: number | null;
   beforeEpisode: number | null;
-  basis: 'release_date' | 'relation';
+  basis: 'release_date';
 };
 
 export type FranchiseNode = AnimeSummary & {
