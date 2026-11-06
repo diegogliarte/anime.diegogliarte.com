@@ -14,6 +14,7 @@
   export type RowMeta = {
     title: string;
     subtitle?: string;
+    detail?: string;
     imageUrl?: string | null;
     href?: string;
     tags?: string[];
@@ -52,7 +53,7 @@
     return rows.filter((row) => {
       const meta = rowMeta?.(row);
       const values = columns.map((column) => column.value(row));
-      return [meta?.title, meta?.subtitle, ...(meta?.tags ?? []), ...values]
+      return [meta?.title, meta?.subtitle, meta?.detail, ...(meta?.tags ?? []), ...values]
         .some((value) => value != null && String(value).toLocaleLowerCase().includes(query));
     });
   });
@@ -168,6 +169,7 @@
                       <div class="anime-copy">
                         <a href={meta.href ?? '#'} target={meta.href?.startsWith('http') ? '_blank' : undefined}>{meta.title}</a>
                         <div class="anime-meta">{#if meta.subtitle}<small>{meta.subtitle}</small>{/if}<a href={`/franchises?id=${encodeURIComponent(String(itemKey))}`} target="_blank" rel="noopener">Franchise</a><a href={`/recommendations?id=${encodeURIComponent(String(itemKey))}`} target="_blank" rel="noopener">Recommendations</a></div>
+                        {#if meta.detail}<small class="anime-detail">{meta.detail}</small>{/if}
                       </div>
                       {#each (meta.tags ?? []).filter((tag) => !['plus', 'minus'].includes(tag.toLowerCase())) as tag}<Badge>{tag}</Badge>{/each}
                     </div>
