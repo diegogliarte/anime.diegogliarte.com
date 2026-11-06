@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import type { AnimeSummary, FranchiseEdge, FranchiseScope } from '@youranimelist/shared';
+import { inferWatchPlacements } from './watch-placement.js';
 
 const sqlitePath = process.env.SQLITE_PATH ?? 'mal_anime.sqlite';
 export const db = new Database(sqlitePath, { readonly: true, fileMustExist: true });
@@ -142,9 +143,13 @@ export function getFranchise(seedId: number, scope: FranchiseScope, maxNodes = 1
     ORDER BY a.start_date IS NULL, a.start_date, a.title COLLATE NOCASE
   `).all(JSON.stringify([...ids])) as Raw[];
 
+  const nodes = rows.map(mapAnime);
+  const franchiseEdges = [...edges.values()].filter((edge) => ids.has(edge.fromId) || ids.has(edge.toId));
+  const watchPlacements = inferWatchPlacements(nodes, franchiseEdges);
+
   return {
-    nodes: rows.map(mapAnime),
-    edges: [...edges.values()].filter((edge) => ids.has(edge.fromId) || ids.has(edge.toId)),
+    nodes: nodes.map((anime) => ({ ...anime, watchPlacement: watchPlacements.get(anime.id) ?? null })),
+    edges: franchiseEdges,
     limited
   };
 }

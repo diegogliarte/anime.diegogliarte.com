@@ -42,7 +42,7 @@ app.get('/v1/franchises/:id', async (request, reply) => {
   const scopeValue = (request.query as { scope?: string }).scope;
   const scope: FranchiseScope = scopeValue === 'core' || scopeValue === 'all' ? scopeValue : 'expanded';
   if (!Number.isInteger(id) || id <= 0) return reply.code(400).send({ error: 'Invalid anime ID' });
-  const key = `franchise:${databaseRevision}:${id}:${scope}`;
+  const key = `franchise:v3:${databaseRevision}:${id}:${scope}`;
   let result = responseCache.get(key) as ReturnType<typeof getFranchise> | undefined;
   if (!result) { result = getFranchise(id, scope); if (result) responseCache.set(key, result, 60 * 60_000); }
   if (!result) return reply.code(404).send({ error: 'Anime not found' });

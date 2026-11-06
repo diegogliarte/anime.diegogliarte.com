@@ -7,6 +7,7 @@
     "dev": "node --env-file-if-exists=.env --import tsx --watch src/server.ts",
     "build": "tsc",
     "check": "tsc --noEmit",
+    "test": "node --import tsx --test src/*.test.ts",
     "crawl:sample": "node --env-file-if-exists=.env --import tsx src/crawler.ts",
     "start": "node --env-file-if-exists=.env dist/server.js"
   },

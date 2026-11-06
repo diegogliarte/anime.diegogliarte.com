@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { AnimeSummary, Franchise, FranchiseScope } from '@youranimelist/shared';
+  import type { AnimeSummary, Franchise, FranchiseNode, FranchiseScope, WatchPlacement } from '@youranimelist/shared';
   import AnimePicker from '$lib/components/AnimePicker.svelte';
   import DataTable, { type TableColumn } from '$lib/components/DataTable.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
@@ -21,8 +21,18 @@
     }
     return values;
   });
-  const columns = $derived<TableColumn<AnimeSummary>[]>([
+  function watchPlacementLabel(placement: WatchPlacement | null) {
+    if (!placement) return null;
+    const { afterEpisode, beforeEpisode, anchorTitle, basis } = placement;
+    let position = `After ${anchorTitle}`;
+    if (afterEpisode !== null && beforeEpisode !== null) position = `≈ Between eps ${afterEpisode}–${beforeEpisode} of ${anchorTitle}`;
+    else if (afterEpisode !== null) position = `After ep ${afterEpisode} of ${anchorTitle}`;
+    else if (beforeEpisode !== null) position = `Before ep ${beforeEpisode} of ${anchorTitle}`;
+    return `${position} · ${basis === 'release_date' ? 'release timing' : 'relation order'}`;
+  }
+  const columns = $derived<TableColumn<FranchiseNode>[]>([
     ...animeColumns().filter((column) => ['title', 'score', 'episodes', 'season', 'startDate', 'endDate', 'type', 'related', 'episodeDuration', 'runtime'].includes(column.key)),
+    { key: 'watchPlacement', label: 'Suggested placement', value: (row) => watchPlacementLabel(row.watchPlacement), width: '330px', tone: (row) => row.watchPlacement ? 'positive' : 'default', sortable: false },
     { key: 'relation', label: 'Relations', value: (row) => edgeLabels.get(row.id)?.join(', ') ?? (row.id === franchise?.seedId ? 'Seed' : '—'), width: '190px' }
   ]);
   const franchiseStats = $derived.by(() => {
@@ -50,7 +60,7 @@
   }
   async function load(id: number) {
     loading = true; error = null;
-    const key = `franchise:${id}:${scope}`;
+    const key = `franchise:v3:${id}:${scope}`;
     const cached = await readCache<Franchise>(key); if (cached) franchise = cached.value;
     try {
       const result = await api<Franchise>(`/v1/franchises/${id}?scope=${scope}`);

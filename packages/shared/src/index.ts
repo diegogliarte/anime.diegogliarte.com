@@ -76,11 +76,23 @@ export type FranchiseEdge = {
   included: boolean;
 };
 
+export type WatchPlacement = {
+  anchorAnimeId: number;
+  anchorTitle: string;
+  afterEpisode: number | null;
+  beforeEpisode: number | null;
+  basis: 'release_date' | 'relation';
+};
+
+export type FranchiseNode = AnimeSummary & {
+  watchPlacement: WatchPlacement | null;
+};
+
 export type Franchise = {
   seedId: number;
   scope: FranchiseScope;
   limited: boolean;
-  nodes: AnimeSummary[];
+  nodes: FranchiseNode[];
   edges: FranchiseEdge[];
   revision: string;
 };
