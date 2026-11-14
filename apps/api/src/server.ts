@@ -14,6 +14,31 @@ await app.register(cors, { origin: origins, methods: ['GET', 'POST', 'OPTIONS'] 
 
 const responseCache = new LruCache<unknown>(300);
 
+function parseUserAliases(value: string | undefined) {
+  const aliases = new Map<string, string>();
+  if (!value?.trim()) return aliases;
+
+  let configured: unknown;
+  try {
+    configured = JSON.parse(value);
+  } catch {
+    throw new Error('MAL_USER_ALIASES must be a JSON object, for example {"diego":"NexxBahamut"}');
+  }
+  if (!configured || Array.isArray(configured) || typeof configured !== 'object') {
+    throw new Error('MAL_USER_ALIASES must be a JSON object');
+  }
+
+  for (const [alias, username] of Object.entries(configured)) {
+    const cleanAlias = alias.trim();
+    const cleanUsername = typeof username === 'string' ? username.trim() : '';
+    if (!cleanAlias || !cleanUsername) throw new Error('MAL_USER_ALIASES keys and values must be non-empty strings');
+    aliases.set(cleanAlias.toLocaleLowerCase(), cleanUsername);
+  }
+  return aliases;
+}
+
+const userAliases = parseUserAliases(process.env.MAL_USER_ALIASES);
+
 app.get('/health', async () => ({ ok: true, revision: databaseRevision }));
 
 app.get('/v1/crawler', async (request, reply) => {
@@ -72,8 +97,10 @@ app.post('/v1/missing', async (request, reply) => {
 app.get('/v1/users/:username/list', async (request, reply) => {
   const username = decodeURIComponent((request.params as { username: string }).username).trim();
   if (!username) return reply.code(400).send({ error: 'Username is required' });
+  const malUsername = userAliases.get(username.toLocaleLowerCase()) ?? username;
   try {
-    return sendJson(request, reply, await fetchUserList(username), PRIVATE_CACHE);
+    const result = await fetchUserList(malUsername);
+    return sendJson(request, reply, { ...result, username }, PRIVATE_CACHE);
   } catch (error) {
     request.log.error(error);
     return reply.code(502).send({ error: error instanceof Error ? error.message : 'Unable to load MAL list' });

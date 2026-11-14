@@ -7,6 +7,7 @@ services:
     environment:
       SQLITE_PATH: /data/mal_anime.sqlite
       MAL_CLIENT_ID: ${MAL_CLIENT_ID}
+      MAL_USER_ALIASES: '${MAL_USER_ALIASES:-{}}'
       CORS_ORIGINS: https://anime.diegogliarte.com
       CRAWLER_STATUS_PATH: /data/crawler-status.json
       CRAWLER_LOG_PATH: /data/crawler.log

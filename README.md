@@ -41,7 +41,7 @@ cd apps/api
 docker compose up -d --build
 ```
 
-Set `MAL_CLIENT_ID` and `SQLITE_HOST_DIR` in `apps/api/.env`. The API mounts the database directory read-only.
+Set `MAL_CLIENT_ID` and `SQLITE_HOST_DIR` in `apps/api/.env`. To expose a shareable name in place of a MAL username, set a JSON alias map such as `MAL_USER_ALIASES={"share-name":"MALUsername"}`. Aliases are case-insensitive, and the original MAL username continues to work. The API mounts the database directory read-only.
 
 The production Compose file also runs the catalog crawler. Set `SQLITE_HOST_DIR` to the directory containing `mal_anime.sqlite`; the API mounts it read-only while the crawler maintains a separate working copy. Each weekly pass:
 
