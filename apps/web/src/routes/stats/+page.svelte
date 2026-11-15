@@ -9,6 +9,7 @@
   type Group = { name: string; count: number; items: UserAnime[]; ratedCount: number; meanScore: number; weightedScore: number };
   type Ranked = { anime: UserAnime; value: string };
   type GenrePick = { genre: string; anime: UserAnime };
+  type GenreCard = { genre: string; best: UserAnime; worst: UserAnime };
   type Stat = { label: string; value: string; hint: string; missing?: UserAnime[] };
   const episodeBucketOrder = ['1', '2–6', '7–13', '14–26', '27–52', '53–99', '100+', 'Unknown'];
 
@@ -95,8 +96,15 @@
   const popularMisses = $derived(rated.filter((anime) => (adjustedUserScore(anime) ?? 0) <= 6 && (anime.popularity ?? 0) > 0)
     .sort((a, b) => (a.popularity ?? Infinity) - (b.popularity ?? Infinity)).slice(0, 8));
   const genreGroups = $derived(groupMany(rated, (anime) => anime.genres));
-  const genreChampions = $derived<GenrePick[]>(pickUniqueGenreAnime(genreGroups, compareAnimeScores));
-  const genreLowlights = $derived<GenrePick[]>(pickUniqueGenreAnime(genreGroups, compareWorstAnimeScores));
+  const genreChampions = $derived<GenrePick[]>(pickGenreAnimeFewerFirst(genreGroups, compareAnimeScores));
+  const genreLowlights = $derived<GenrePick[]>(pickGenreAnimeFewerFirst(genreGroups, compareWorstAnimeScores));
+  const genreCards = $derived.by<GenreCard[]>(() => {
+    const worstByGenre = new Map(genreLowlights.map((pick) => [pick.genre, pick.anime]));
+    return genreChampions.flatMap((pick) => {
+      const worst = worstByGenre.get(pick.genre);
+      return worst ? [{ genre: pick.genre, best: pick.anime, worst }] : [];
+    });
+  });
 
   function average(values: number[]) { return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0; }
   function median(values: number[]) { const sorted = [...values].sort((a, b) => a - b); const middle = Math.floor(sorted.length / 2); return sorted.length ? (sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2) : 0; }
@@ -116,29 +124,23 @@
       || (b.popularity ?? -Infinity) - (a.popularity ?? -Infinity)
       || a.title.localeCompare(b.title);
   }
-  function pickUniqueGenreAnime(groups: Group[], compare: (a: UserAnime, b: UserAnime) => number) {
-    const randomized = [...groups].sort((a, b) => randomGenreOrder(a.name) - randomGenreOrder(b.name) || a.name.localeCompare(b.name));
-    const candidates = new Map(randomized.map((genre) => [genre.name, [...genre.items].sort(compare)]));
-    const genreByAnime = new Map<number, string>();
+  function pickGenreAnimeFewerFirst(groups: Group[], compare: (a: UserAnime, b: UserAnime) => number) {
+    const assignmentOrder = [...groups].sort((a, b) => a.items.length - b.items.length || randomGenreOrder(a.name) - randomGenreOrder(b.name) || a.name.localeCompare(b.name));
+    const used = new Set<number>();
     const animeByGenre = new Map<string, UserAnime>();
-    function assign(genre: string, visited: Set<number>): boolean {
-      for (const anime of candidates.get(genre) ?? []) {
-        if (visited.has(anime.id)) continue;
-        visited.add(anime.id);
-        const previousGenre = genreByAnime.get(anime.id);
-        if (!previousGenre || assign(previousGenre, visited)) {
-          genreByAnime.set(anime.id, genre);
-          animeByGenre.set(genre, anime);
-          return true;
-        }
-      }
-      return false;
+    for (const genre of assignmentOrder) {
+      const ranked = [...genre.items].sort(compare);
+      const anime = ranked.find((item) => !used.has(item.id)) ?? ranked[0];
+      if (!anime) continue;
+      used.add(anime.id);
+      animeByGenre.set(genre.name, anime);
     }
-    for (const genre of randomized) assign(genre.name, new Set());
-    return randomized.flatMap((genre) => {
-      const anime = animeByGenre.get(genre.name);
-      return anime ? [{ genre: genre.name, anime }] : [];
-    });
+    return [...groups]
+      .sort((a, b) => randomGenreOrder(a.name) - randomGenreOrder(b.name) || a.name.localeCompare(b.name))
+      .flatMap((genre) => {
+        const anime = animeByGenre.get(genre.name);
+        return anime ? [{ genre: genre.name, anime }] : [];
+      });
   }
   function randomGenreOrder(genre: string) {
     const value = `${appState.loadedUsername}:${genre}`;
@@ -198,38 +200,31 @@
       {@render Showcase('Most obscure', 'Completed anime you rated 8+, sorted by popularity rank.', mostObscure, 'popularity')}
       {@render Showcase('Popular misses', 'Popular completed anime you scored 6 or lower.', popularMisses, 'popularity')}
     </div>
-    {#if genreChampions.length}
-      <section class="genre-champions">
+    {#if genreCards.length}
+      <section class="genre-duels">
         <div class="genre-champions-heading">
-          <div><h2>Your best by genre</h2><p>Your highest-rated available pick per genre. Each anime appears only once.</p></div>
+          <div><h2>Your best & worst by genre</h2><p>Two sides of each genre, with smaller categories choosing first.</p></div>
         </div>
-        <div class="genre-champions-list">
-          {#each genreChampions as champion (champion.genre)}
-            <a href={champion.anime.malUrl} target="_blank">
-              <div class="genre-champion-cover">
-                {#if champion.anime.imageUrl}<img class="status-image status-good" src={champion.anime.imageUrl} alt="" loading="lazy" />{:else}<span class="showcase-cover-empty"></span>{/if}
-                <span class="genre-champion-score score-good">You {userScoreLabel(champion.anime)}</span>
-                <span class="genre-champion-label">{champion.genre}</span>
+        <div class="genre-duels-list">
+          {#each genreCards as card (card.genre)}
+            <article class="genre-duel">
+              <h3>{card.genre}</h3>
+              <div class="genre-duel-cover">
+                <a class="genre-duel-side side-best" href={card.best.malUrl} target="_blank" aria-label={`Best ${card.genre}: ${card.best.title}`}>
+                  {#if card.best.imageUrl}<img src={card.best.imageUrl} alt="" loading="lazy" />{:else}<span class="genre-duel-cover-empty"></span>{/if}
+                  <span class="genre-duel-score">Best · {userScoreLabel(card.best)}</span>
+                </a>
+                <a class="genre-duel-side side-worst" href={card.worst.malUrl} target="_blank" aria-label={`Worst ${card.genre}: ${card.worst.title}`}>
+                  {#if card.worst.imageUrl}<img src={card.worst.imageUrl} alt="" loading="lazy" />{:else}<span class="genre-duel-cover-empty"></span>{/if}
+                  <span class="genre-duel-score">Worst · {userScoreLabel(card.worst)}</span>
+                </a>
+                <span class="genre-duel-cut" aria-hidden="true"></span>
               </div>
-              <strong>{champion.anime.title}</strong>
-            </a>
-          {/each}
-        </div>
-      </section>
-      <section class="genre-champions">
-        <div class="genre-champions-heading">
-          <div><h2>Your worst by genre</h2><p>Your lowest-rated available pick per genre. Each anime appears only once.</p></div>
-        </div>
-        <div class="genre-champions-list">
-          {#each genreLowlights as lowlight (lowlight.genre)}
-            <a href={lowlight.anime.malUrl} target="_blank">
-              <div class="genre-champion-cover">
-                {#if lowlight.anime.imageUrl}<img class="status-image status-bad" src={lowlight.anime.imageUrl} alt="" loading="lazy" />{:else}<span class="showcase-cover-empty"></span>{/if}
-                <span class="genre-champion-score score-bad">You {userScoreLabel(lowlight.anime)}</span>
-                <span class="genre-champion-label">{lowlight.genre}</span>
+              <div class="genre-duel-titles">
+                <a href={card.best.malUrl} target="_blank"><span>Best</span><strong>{card.best.title}</strong></a>
+                <a href={card.worst.malUrl} target="_blank"><span>Worst</span><strong>{card.worst.title}</strong></a>
               </div>
-              <strong>{lowlight.anime.title}</strong>
-            </a>
+            </article>
           {/each}
         </div>
       </section>
