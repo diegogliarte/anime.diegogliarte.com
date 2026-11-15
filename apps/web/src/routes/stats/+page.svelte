@@ -209,21 +209,33 @@
           {#each genreCards as card (card.genre)}
             <article class="genre-duel">
               <h3>{card.genre}</h3>
-              <div class="genre-duel-cover">
-                <a class="genre-duel-side side-best" href={card.best.malUrl} target="_blank" aria-label={`Best ${card.genre}: ${card.best.title}`}>
-                  {#if card.best.imageUrl}<img src={card.best.imageUrl} alt="" loading="lazy" />{:else}<span class="genre-duel-cover-empty"></span>{/if}
-                  <span class="genre-duel-score">Best · {userScoreLabel(card.best)}</span>
-                </a>
-                <a class="genre-duel-side side-worst" href={card.worst.malUrl} target="_blank" aria-label={`Worst ${card.genre}: ${card.worst.title}`}>
-                  {#if card.worst.imageUrl}<img src={card.worst.imageUrl} alt="" loading="lazy" />{:else}<span class="genre-duel-cover-empty"></span>{/if}
-                  <span class="genre-duel-score">Worst · {userScoreLabel(card.worst)}</span>
-                </a>
-                <span class="genre-duel-cut" aria-hidden="true"></span>
-              </div>
-              <div class="genre-duel-titles">
-                <a href={card.best.malUrl} target="_blank"><span>Best</span><strong>{card.best.title}</strong></a>
-                <a href={card.worst.malUrl} target="_blank"><span>Worst</span><strong>{card.worst.title}</strong></a>
-              </div>
+              {#if card.best.id === card.worst.id}
+                <div class="genre-duel-cover genre-duel-solo">
+                  <a href={card.best.malUrl} target="_blank" aria-label={`Best and worst ${card.genre}: ${card.best.title}`}>
+                    {#if card.best.imageUrl}<img src={card.best.imageUrl} alt="" loading="lazy" />{:else}<span class="genre-duel-cover-empty"></span>{/if}
+                    <span class="genre-duel-score">Best & worst · <b>{userScoreLabel(card.best)}</b></span>
+                  </a>
+                </div>
+                <div class="genre-duel-titles genre-duel-title-solo">
+                  <a href={card.best.malUrl} target="_blank"><strong>{card.best.title}</strong></a>
+                </div>
+              {:else}
+                <div class="genre-duel-cover">
+                  <a class="genre-duel-side side-best" href={card.best.malUrl} target="_blank" aria-label={`Best ${card.genre}: ${card.best.title}`}>
+                    {#if card.best.imageUrl}<img src={card.best.imageUrl} alt="" loading="lazy" />{:else}<span class="genre-duel-cover-empty"></span>{/if}
+                    <span class="genre-duel-score">Best · <b>{userScoreLabel(card.best)}</b></span>
+                  </a>
+                  <a class="genre-duel-side side-worst" href={card.worst.malUrl} target="_blank" aria-label={`Worst ${card.genre}: ${card.worst.title}`}>
+                    {#if card.worst.imageUrl}<img src={card.worst.imageUrl} alt="" loading="lazy" />{:else}<span class="genre-duel-cover-empty"></span>{/if}
+                    <span class="genre-duel-score">Worst · <b>{userScoreLabel(card.worst)}</b></span>
+                  </a>
+                  <span class="genre-duel-cut" aria-hidden="true"></span>
+                </div>
+                <div class="genre-duel-titles">
+                  <a href={card.best.malUrl} target="_blank"><strong>{card.best.title}</strong></a>
+                  <a href={card.worst.malUrl} target="_blank"><strong>{card.worst.title}</strong></a>
+                </div>
+              {/if}
             </article>
           {/each}
         </div>
