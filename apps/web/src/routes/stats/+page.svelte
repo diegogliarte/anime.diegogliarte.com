@@ -208,10 +208,10 @@
             <a href={champion.anime.malUrl} target="_blank">
               <div class="genre-champion-cover">
                 {#if champion.anime.imageUrl}<img class="status-image status-good" src={champion.anime.imageUrl} alt="" loading="lazy" />{:else}<span class="showcase-cover-empty"></span>{/if}
-                <span>{champion.genre}</span>
+                <span class="genre-champion-score score-good">You {userScoreLabel(champion.anime)}</span>
+                <span class="genre-champion-label">{champion.genre}</span>
               </div>
               <strong>{champion.anime.title}</strong>
-              <small>You {userScoreLabel(champion.anime)} · MAL {decimal(champion.anime.score, 2)}</small>
             </a>
           {/each}
         </div>
@@ -225,10 +225,10 @@
             <a href={lowlight.anime.malUrl} target="_blank">
               <div class="genre-champion-cover">
                 {#if lowlight.anime.imageUrl}<img class="status-image status-bad" src={lowlight.anime.imageUrl} alt="" loading="lazy" />{:else}<span class="showcase-cover-empty"></span>{/if}
-                <span>{lowlight.genre}</span>
+                <span class="genre-champion-score score-bad">You {userScoreLabel(lowlight.anime)}</span>
+                <span class="genre-champion-label">{lowlight.genre}</span>
               </div>
               <strong>{lowlight.anime.title}</strong>
-              <small>You {userScoreLabel(lowlight.anime)} · MAL {decimal(lowlight.anime.score, 2)}</small>
             </a>
           {/each}
         </div>
