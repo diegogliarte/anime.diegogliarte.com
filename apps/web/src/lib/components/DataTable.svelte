@@ -17,14 +17,12 @@
     detail?: string;
     imageUrl?: string | null;
     href?: string;
-    tags?: string[];
     imageTone?: 'neutral' | 'good' | 'bad' | 'accent' | 'warning';
   };
 </script>
 
 <script lang="ts" generics="Row">
   import { onMount } from 'svelte';
-  import Badge from './Badge.svelte';
 
   let {
     rows, columns, rowKey, rowMeta, total = rows.length, loading = false, hasMore = false,
@@ -53,7 +51,7 @@
     return rows.filter((row) => {
       const meta = rowMeta?.(row);
       const values = columns.map((column) => column.value(row));
-      return [meta?.title, meta?.subtitle, meta?.detail, ...(meta?.tags ?? []), ...values]
+      return [meta?.title, meta?.subtitle, meta?.detail, ...values]
         .some((value) => value != null && String(value).toLocaleLowerCase().includes(query));
     });
   });
@@ -171,7 +169,6 @@
                         <div class="anime-meta">{#if meta.subtitle}<small>{meta.subtitle}</small>{/if}<a href={`/franchises?id=${encodeURIComponent(String(itemKey))}`} target="_blank" rel="noopener">Franchise</a><a href={`/recommendations?id=${encodeURIComponent(String(itemKey))}`} target="_blank" rel="noopener">Recommendations</a></div>
                         {#if meta.detail}<small class="anime-detail">{meta.detail}</small>{/if}
                       </div>
-                      {#each (meta.tags ?? []).filter((tag) => !['plus', 'minus'].includes(tag.toLowerCase())) as tag}<Badge>{tag}</Badge>{/each}
                     </div>
                   {:else}{column.format ? column.format(value, row) : (value ?? '—')}{/if}
                 </td>

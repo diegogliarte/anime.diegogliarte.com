@@ -8,10 +8,9 @@
   type BreakdownMetric = 'count' | 'mean' | 'weighted';
   type Group = { name: string; count: number; items: UserAnime[]; ratedCount: number; meanScore: number; weightedScore: number };
   type Ranked = { anime: UserAnime; value: string };
-  type GenreChampion = { genre: string; anime: UserAnime; contenders: number };
+  type GenrePick = { genre: string; anime: UserAnime };
   type Stat = { label: string; value: string; hint: string; missing?: UserAnime[] };
   const episodeBucketOrder = ['1', '2–6', '7–13', '14–26', '27–52', '53–99', '100+', 'Unknown'];
-  const featuredGenres = ['Time Travel', 'Sports'];
 
   const completed = $derived(appState.userList.filter((anime) => anime.user.status === 'completed'));
   const planned = $derived(appState.userList.filter((anime) => anime.user.status === 'plan_to_watch'));
@@ -42,8 +41,6 @@
   const medianScore = $derived(median(rated.map((anime) => adjustedUserScore(anime) ?? 0)));
   const meanAbsoluteDifference = $derived(average(comparable.map((anime) => Math.abs(scoreDifference(anime)))));
   let breakdownMetric = $state<BreakdownMetric>('count');
-  let showAllGenreChampions = $state(false);
-  let showAllGenreLowlights = $state(false);
 
   const stats = $derived<Stat[]>([
     { label: 'Completed', value: number(completed.length), hint: `${number(appState.userList.length)} total entries` },
@@ -97,22 +94,9 @@
     .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0)).slice(0, 8));
   const popularMisses = $derived(rated.filter((anime) => (adjustedUserScore(anime) ?? 0) <= 6 && (anime.popularity ?? 0) > 0)
     .sort((a, b) => (a.popularity ?? Infinity) - (b.popularity ?? Infinity)).slice(0, 8));
-  const genreChampions = $derived<GenreChampion[]>(groupMany(rated, (anime) => anime.genres)
-    .map((genre) => ({
-      genre: genre.name,
-      anime: [...genre.items].sort(compareAnimeScores)[0],
-      contenders: genre.items.length
-    }))
-    .sort((a, b) => genrePriority(a.genre) - genrePriority(b.genre) || b.contenders - a.contenders || a.genre.localeCompare(b.genre)));
-  const visibleGenreChampions = $derived(showAllGenreChampions ? genreChampions : genreChampions.slice(0, 12));
-  const genreLowlights = $derived<GenreChampion[]>(groupMany(rated, (anime) => anime.genres)
-    .map((genre) => ({
-      genre: genre.name,
-      anime: [...genre.items].sort(compareWorstAnimeScores)[0],
-      contenders: genre.items.length
-    }))
-    .sort((a, b) => genrePriority(a.genre) - genrePriority(b.genre) || b.contenders - a.contenders || a.genre.localeCompare(b.genre)));
-  const visibleGenreLowlights = $derived(showAllGenreLowlights ? genreLowlights : genreLowlights.slice(0, 12));
+  const genreGroups = $derived(groupMany(rated, (anime) => anime.genres));
+  const genreChampions = $derived<GenrePick[]>(pickUniqueGenreAnime(genreGroups, compareAnimeScores));
+  const genreLowlights = $derived<GenrePick[]>(pickUniqueGenreAnime(genreGroups, compareWorstAnimeScores));
 
   function average(values: number[]) { return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0; }
   function median(values: number[]) { const sorted = [...values].sort((a, b) => a - b); const middle = Math.floor(sorted.length / 2); return sorted.length ? (sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2) : 0; }
@@ -132,9 +116,35 @@
       || (b.popularity ?? -Infinity) - (a.popularity ?? -Infinity)
       || a.title.localeCompare(b.title);
   }
-  function genrePriority(genre: string) {
-    const index = featuredGenres.indexOf(genre);
-    return index === -1 ? featuredGenres.length : index;
+  function pickUniqueGenreAnime(groups: Group[], compare: (a: UserAnime, b: UserAnime) => number) {
+    const randomized = [...groups].sort((a, b) => randomGenreOrder(a.name) - randomGenreOrder(b.name) || a.name.localeCompare(b.name));
+    const candidates = new Map(randomized.map((genre) => [genre.name, [...genre.items].sort(compare)]));
+    const genreByAnime = new Map<number, string>();
+    const animeByGenre = new Map<string, UserAnime>();
+    function assign(genre: string, visited: Set<number>): boolean {
+      for (const anime of candidates.get(genre) ?? []) {
+        if (visited.has(anime.id)) continue;
+        visited.add(anime.id);
+        const previousGenre = genreByAnime.get(anime.id);
+        if (!previousGenre || assign(previousGenre, visited)) {
+          genreByAnime.set(anime.id, genre);
+          animeByGenre.set(genre, anime);
+          return true;
+        }
+      }
+      return false;
+    }
+    for (const genre of randomized) assign(genre.name, new Set());
+    return randomized.flatMap((genre) => {
+      const anime = animeByGenre.get(genre.name);
+      return anime ? [{ genre: genre.name, anime }] : [];
+    });
+  }
+  function randomGenreOrder(genre: string) {
+    const value = `${appState.loadedUsername}:${genre}`;
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index++) hash = Math.imul(hash ^ value.charCodeAt(index), 16777619);
+    return hash >>> 0;
   }
   function group(items: UserAnime[], key: (anime: UserAnime) => string): Group[] {
     const groups = new Map<string, UserAnime[]>();
@@ -191,11 +201,10 @@
     {#if genreChampions.length}
       <section class="genre-champions">
         <div class="genre-champions-heading">
-          <div><h2>Your best by genre</h2><p>The highest-rated anime you completed in each genre, with MAL score breaking ties.</p></div>
-          {#if genreChampions.length > 12}<button onclick={() => showAllGenreChampions = !showAllGenreChampions}>{showAllGenreChampions ? 'Show featured' : `Show all ${genreChampions.length}`}</button>{/if}
+          <div><h2>Your best by genre</h2><p>Your highest-rated available pick per genre. Each anime appears only once.</p></div>
         </div>
         <div class="genre-champions-list">
-          {#each visibleGenreChampions as champion (champion.genre)}
+          {#each genreChampions as champion (champion.genre)}
             <a href={champion.anime.malUrl} target="_blank">
               <div class="genre-champion-cover">
                 {#if champion.anime.imageUrl}<img class="status-image status-good" src={champion.anime.imageUrl} alt="" loading="lazy" />{:else}<span class="showcase-cover-empty"></span>{/if}
@@ -203,18 +212,16 @@
               </div>
               <strong>{champion.anime.title}</strong>
               <small>You {userScoreLabel(champion.anime)} · MAL {decimal(champion.anime.score, 2)}</small>
-              <em>Best of {number(champion.contenders)} rated</em>
             </a>
           {/each}
         </div>
       </section>
       <section class="genre-champions">
         <div class="genre-champions-heading">
-          <div><h2>Your worst by genre</h2><p>The lowest-rated anime you completed in each genre, with the lower MAL score breaking ties.</p></div>
-          {#if genreLowlights.length > 12}<button onclick={() => showAllGenreLowlights = !showAllGenreLowlights}>{showAllGenreLowlights ? 'Show featured' : `Show all ${genreLowlights.length}`}</button>{/if}
+          <div><h2>Your worst by genre</h2><p>Your lowest-rated available pick per genre. Each anime appears only once.</p></div>
         </div>
         <div class="genre-champions-list">
-          {#each visibleGenreLowlights as lowlight (lowlight.genre)}
+          {#each genreLowlights as lowlight (lowlight.genre)}
             <a href={lowlight.anime.malUrl} target="_blank">
               <div class="genre-champion-cover">
                 {#if lowlight.anime.imageUrl}<img class="status-image status-bad" src={lowlight.anime.imageUrl} alt="" loading="lazy" />{:else}<span class="showcase-cover-empty"></span>{/if}
@@ -222,7 +229,6 @@
               </div>
               <strong>{lowlight.anime.title}</strong>
               <small>You {userScoreLabel(lowlight.anime)} · MAL {decimal(lowlight.anime.score, 2)}</small>
-              <em>Worst of {number(lowlight.contenders)} rated</em>
             </a>
           {/each}
         </div>

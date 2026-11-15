@@ -77,7 +77,7 @@
     <div><span>Avg eps/anime</span><strong>{franchiseStats.averageEpisodes.toFixed(1)}</strong><small>known episode counts</small></div>
   </div>{/if}
   {#if error}<div class="error">{error}</div>{/if}
-  {#if franchise}<DataTable rows={franchise.nodes} {columns} rowKey={(row) => row.id} rowMeta={(row) => { const user = userById.get(row.id); const placement = watchPlacementLabel(row.watchPlacement); return { title: row.title, subtitle: `${label(row.mediaType)} · ${season(row.season, row.year)}`, detail: placement ?? undefined, imageUrl: row.imageUrl, href: row.malUrl, tags: user?.user.tags, imageTone: listStatusTone(user?.user.status) }; }} total={franchise.nodes.length} {loading} />
+  {#if franchise}<DataTable rows={franchise.nodes} {columns} rowKey={(row) => row.id} rowMeta={(row) => { const user = userById.get(row.id); const placement = watchPlacementLabel(row.watchPlacement); return { title: row.title, subtitle: `${label(row.mediaType)} · ${season(row.season, row.year)}`, detail: placement ?? undefined, imageUrl: row.imageUrl, href: row.malUrl, imageTone: listStatusTone(user?.user.status) }; }} total={franchise.nodes.length} {loading} />
   {:else if loading}<div class="empty">Loading franchise…</div>
   {:else}<EmptyState title="Select an anime" detail="The last franchise you viewed will open automatically on your next visit." />{/if}
 </div>

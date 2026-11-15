@@ -10,7 +10,7 @@
   const statuses: (ListStatus | 'all')[] = ['all', 'watching', 'completed', 'on_hold', 'dropped', 'plan_to_watch'];
   const rows = $derived(appState.userList.filter((anime) => status === 'all' || anime.user.status === status));
   const counts = $derived(new Map(statuses.map((item) => [item, item === 'all' ? appState.userList.length : appState.userList.filter((anime) => anime.user.status === item).length])));
-  const meta = (anime: UserAnime) => ({ title: anime.title, subtitle: `${label(anime.mediaType)} · ${season(anime.season, anime.year)}`, imageUrl: anime.imageUrl, href: anime.malUrl, tags: anime.user.tags, imageTone: listStatusTone(anime.user.status) });
+  const meta = (anime: UserAnime) => ({ title: anime.title, subtitle: `${label(anime.mediaType)} · ${season(anime.season, anime.year)}`, imageUrl: anime.imageUrl, href: anime.malUrl, imageTone: listStatusTone(anime.user.status) });
 
   function downloadJson() {
     const exportedAt = new Date().toISOString();
